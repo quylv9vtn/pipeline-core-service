@@ -33,6 +33,11 @@ type DB struct {
 	SQLDialect
 }
 
+type Tx struct {
+	*sql.Tx
+	dialect SQLDialect
+}
+
 // NewDB creates a DB.
 func NewDB(db *sql.DB, dialect SQLDialect) *DB {
 	return &DB{db, dialect}
@@ -42,6 +47,7 @@ func NewDB(db *sql.DB, dialect SQLDialect) *DB {
 // It is used to bridge the difference between mysql (production) and sqlite
 // (test).
 type SQLDialect interface {
+	Rebind(query string) string
 	// GroupConcat builds query to group concatenate `expr` in each row and use `separator`
 	// to join rows in a group.
 	GroupConcat(expr string, separator string) string
@@ -64,8 +70,42 @@ type SQLDialect interface {
 	UpdateWithJointOrFrom(targetTable, joinTable, setClause, joinClause, whereClause string) string
 }
 
+func (d *DB) Begin() (*Tx, error) {
+	tx, err := d.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	return &Tx{Tx: tx, dialect: d.SQLDialect}, nil
+}
+
+func (d *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	return d.DB.Query(d.Rebind(query), args...)
+}
+
+func (d *DB) QueryRow(query string, args ...interface{}) *sql.Row {
+	return d.DB.QueryRow(d.Rebind(query), args...)
+}
+
+func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
+	return d.DB.Exec(d.Rebind(query), args...)
+}
+
+func (t *Tx) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	return t.Tx.Query(t.dialect.Rebind(query), args...)
+}
+
+func (t *Tx) QueryRow(query string, args ...interface{}) *sql.Row {
+	return t.Tx.QueryRow(t.dialect.Rebind(query), args...)
+}
+
+func (t *Tx) Exec(query string, args ...interface{}) (sql.Result, error) {
+	return t.Tx.Exec(t.dialect.Rebind(query), args...)
+}
+
 // MySQLDialect implements SQLDialect with mysql dialect implementation.
 type MySQLDialect struct{}
+
+func (d MySQLDialect) Rebind(query string) string { return query }
 
 func (d MySQLDialect) GroupConcat(expr string, separator string) string {
 	var buffer bytes.Buffer
@@ -97,6 +137,8 @@ func (d MySQLDialect) UpdateWithJointOrFrom(targetTable, joinTable, setClause, j
 
 // SQLiteDialect implements SQLDialect with sqlite dialect implementation.
 type SQLiteDialect struct{}
+
+func (d SQLiteDialect) Rebind(query string) string { return query }
 
 func (d SQLiteDialect) GroupConcat(expr string, separator string) string {
 	var buffer bytes.Buffer
@@ -149,6 +191,141 @@ func NewMySQLDialect() MySQLDialect {
 func NewSQLiteDialect() SQLiteDialect {
 	return SQLiteDialect{}
 }
+
+// PostgreSQLDialect implements the SQL differences used by the legacy stores.
+type PostgreSQLDialect struct{}
+
+func (d PostgreSQLDialect) Rebind(query string) string {
+	var b strings.Builder
+	parameter := 1
+	for i := 0; i < len(query); {
+		if query[i] == '\'' {
+			// Preserve PostgreSQL/MySQL single-quoted literals verbatim.
+			b.WriteByte(query[i])
+			i++
+			for i < len(query) {
+				b.WriteByte(query[i])
+				if query[i] == '\'' {
+					if i+1 < len(query) && query[i+1] == '\'' {
+						b.WriteByte(query[i+1])
+						i += 2
+						continue
+					}
+					i++
+					break
+				}
+				i++
+			}
+			continue
+		}
+		if query[i] == '?' {
+			fmt.Fprintf(&b, "$%d", parameter)
+			parameter++
+			i++
+			continue
+		}
+		if query[i] == '"' {
+			// Legacy KFP SQL uses MySQL double-quoted string literals.
+			end := strings.IndexByte(query[i+1:], '"')
+			if end >= 0 {
+				literal := query[i+1 : i+1+end]
+				b.WriteByte('\'')
+				b.WriteString(strings.ReplaceAll(literal, "'", "''"))
+				b.WriteByte('\'')
+				i += end + 2
+				continue
+			}
+		}
+		if isSQLIdentifierStart(query[i]) {
+			end := i + 1
+			for end < len(query) && isSQLIdentifierPart(query[end]) {
+				end++
+			}
+			identifier := query[i:end]
+			canonicalIdentifier := canonicalPostgreSQLIdentifier(identifier)
+			if canonicalIdentifier != "" {
+				b.WriteByte('"')
+				b.WriteString(canonicalIdentifier)
+				b.WriteByte('"')
+			} else if shouldQuotePostgreSQLIdentifier(identifier) {
+				b.WriteByte('"')
+				b.WriteString(identifier)
+				b.WriteByte('"')
+			} else {
+				b.WriteString(identifier)
+			}
+			i = end
+			continue
+		}
+		b.WriteByte(query[i])
+		i++
+	}
+	return b.String()
+}
+
+func canonicalPostgreSQLIdentifier(identifier string) string {
+	// Some legacy stores use lower-case field keys while the historical schema
+	// defines the column with quoted upper-case spelling.
+	switch identifier {
+	case "uuid":
+		return "UUID"
+	default:
+		return ""
+	}
+}
+
+func isSQLIdentifierStart(c byte) bool {
+	return c == '_' || c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z'
+}
+
+func isSQLIdentifierPart(c byte) bool {
+	return isSQLIdentifierStart(c) || c >= '0' && c <= '9'
+}
+
+func shouldQuotePostgreSQLIdentifier(identifier string) bool {
+	if identifier == strings.ToLower(identifier) {
+		return false
+	}
+	keywords := map[string]struct{}{
+		"ALL": {}, "AND": {}, "AS": {}, "ASC": {}, "BY": {}, "CASE": {},
+		"CONCAT": {}, "COUNT": {}, "DELETE": {}, "DESC": {}, "DISTINCT": {},
+		"ELSE": {}, "END": {}, "EXISTS": {}, "FALSE": {}, "FOR": {}, "FROM": {},
+		"GROUP": {}, "HAVING": {}, "IN": {}, "INNER": {}, "INSERT": {}, "INTO": {},
+		"IS": {}, "JOIN": {}, "LEFT": {}, "LIKE": {}, "LIMIT": {}, "NOT": {},
+		"NULL": {}, "ON": {}, "OR": {}, "ORDER": {}, "OVER": {}, "PARTITION": {},
+		"RIGHT": {}, "ROW_NUMBER": {}, "SELECT": {}, "SET": {}, "STRING_AGG": {},
+		"THEN": {}, "TRUE": {}, "UNION": {}, "UPDATE": {}, "VALUES": {}, "WHEN": {},
+		"WHERE": {},
+	}
+	_, keyword := keywords[strings.ToUpper(identifier)]
+	return !keyword
+}
+
+func (d PostgreSQLDialect) GroupConcat(expr string, separator string) string {
+	if separator == "" {
+		separator = ","
+	}
+	return fmt.Sprintf("STRING_AGG(%s, '%s')", expr, strings.ReplaceAll(separator, "'", "''"))
+}
+
+func (d PostgreSQLDialect) Concat(exprs []string, separator string) string {
+	joiner := " || "
+	if separator != "" {
+		joiner = fmt.Sprintf(" || '%s' || ", strings.ReplaceAll(separator, "'", "''"))
+	}
+	return strings.Join(exprs, joiner)
+}
+
+func (d PostgreSQLDialect) IsDuplicateError(err error) bool     { return false }
+func (d PostgreSQLDialect) SelectForUpdate(query string) string { return query + " FOR UPDATE" }
+func (d PostgreSQLDialect) Upsert(query string, key string, overwrite bool, columns ...string) string {
+	return fmt.Sprintf("%v ON CONFLICT(%v) DO UPDATE SET %v", query, key, prepareUpdateSuffixSQLite(columns, overwrite))
+}
+func (d PostgreSQLDialect) UpdateWithJointOrFrom(targetTable, joinTable, setClause, joinClause, whereClause string) string {
+	return fmt.Sprintf("UPDATE %s SET %s FROM %s WHERE %s AND %s", targetTable, setClause, joinTable, joinClause, whereClause)
+}
+
+func NewPostgreSQLDialect() PostgreSQLDialect { return PostgreSQLDialect{} }
 
 func prepareUpdateSuffixMySQL(columns []string, overwrite bool) string {
 	columnsExtended := make([]string, 0)

@@ -139,15 +139,6 @@ function createUIServer(options: UIConfigs) {
   /** Healthz */
   registerHandler(
     app.get,
-    `/${apiVersion1Prefix}/healthz`,
-    getHealthzHandler({
-      healthzEndpoint: getHealthzEndpoint(apiServerAddress, apiVersion1Prefix),
-      healthzStats: getBuildMetadata(currDir),
-    }),
-  );
-
-  registerHandler(
-    app.get,
     `/${apiVersion2Prefix}/healthz`,
     getHealthzHandler({
       healthzEndpoint: getHealthzEndpoint(apiServerAddress, apiVersion2Prefix),

@@ -45,10 +45,10 @@ type Pipeline struct {
 	DisplayName string    `gorm:"column:DisplayName; not null"`
 	Description LargeText `gorm:"column:Description; not null"`
 	// TODO(gkcalat): this is deprecated. Consider removing and adding data migration logic at the server startup.
-	Parameters LargeText      `gorm:"column:Parameters;"`
+	Parameters LargeText      `gorm:"-"`
 	Status     PipelineStatus `gorm:"column:Status; not null;"`
 	// TODO(gkcalat): this is deprecated. Consider removing and adding data migration logic at the server startup.
-	DefaultVersionId string `gorm:"column:DefaultVersionId;"` // deprecated
+	DefaultVersionId string `gorm:"-"` // removed from the V2-only schema
 	// Namespace is restricted to varchar(63) due to Kubernetes' naming constraints:
 	// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names
 	Namespace string `gorm:"column:Namespace; uniqueIndex:namespace_name; type:varchar(63);"`

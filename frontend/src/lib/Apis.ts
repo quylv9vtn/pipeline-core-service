@@ -25,7 +25,11 @@ import {
 } from 'src/apisv2beta1/pipeline';
 import { RunServiceApi as RunServiceApiV1 } from 'src/apis/run';
 import { RunServiceApi as RunServiceApiV2 } from 'src/apisv2beta1/run';
-import { ApiVisualization, VisualizationServiceApi } from 'src/apis/visualization';
+import { ApiVisualization } from 'src/apis/visualization';
+import {
+  V2beta1Visualization,
+  VisualizationServiceApi,
+} from 'src/apisv2beta1/visualization';
 import { HTMLViewerConfig } from 'src/components/viewers/HTMLViewer';
 import { PlotType } from 'src/components/viewers/Viewer';
 import * as Utils from './Utils';
@@ -83,9 +87,9 @@ export class Apis {
     visualizationData: ApiVisualization,
     namespace?: string,
   ): Promise<HTMLViewerConfig> {
-    const visualization = await Apis.visualizationServiceApi.createVisualization(
+    const visualization = await Apis.visualizationServiceApiV2.createVisualizationV1(
       namespace || '',
-      visualizationData,
+      visualizationData as V2beta1Visualization,
     );
     if (visualization.html) {
       const htmlContent = visualization.html
@@ -245,15 +249,15 @@ export class Apis {
     return this._runServiceApiV2;
   }
 
-  public static get visualizationServiceApi(): VisualizationServiceApi {
-    if (!this._visualizationServiceApi) {
-      this._visualizationServiceApi = new VisualizationServiceApi(
+  public static get visualizationServiceApiV2(): VisualizationServiceApi {
+    if (!this._visualizationServiceApiV2) {
+      this._visualizationServiceApiV2 = new VisualizationServiceApi(
         { basePath: this.basePath },
         undefined,
         crossBrowserFetch,
       );
     }
-    return this._visualizationServiceApi;
+    return this._visualizationServiceApiV2;
   }
 
   /**
@@ -518,7 +522,7 @@ export class Apis {
   private static _pipelineServiceApiV2?: PipelineServiceApiV2;
   private static _runServiceApiV1?: RunServiceApiV1;
   private static _runServiceApiV2?: RunServiceApiV2;
-  private static _visualizationServiceApi?: VisualizationServiceApi;
+  private static _visualizationServiceApiV2?: VisualizationServiceApi;
 
   /**
    * This function will call this._fetch() and parse the resulting JSON into an object of type T.

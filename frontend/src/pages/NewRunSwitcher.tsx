@@ -5,10 +5,8 @@ import { QUERY_PARAMS } from 'src/components/Router';
 import { Apis } from 'src/lib/Apis';
 import { NamespaceContext } from 'src/lib/KubeflowClient';
 import { URLParser } from 'src/lib/URLParser';
-import { NewRun } from './NewRun';
 import NewRunV2 from './NewRunV2';
 import { PageProps } from './Page';
-import { isTemplateV2 } from 'src/lib/v2/WorkflowUtils';
 import { V2beta1Pipeline, V2beta1PipelineVersion } from 'src/apisv2beta1/pipeline';
 import { V2beta1Run } from 'src/apisv2beta1/run';
 import { V2beta1RecurringRun } from 'src/apisv2beta1/recurringrun';
@@ -118,28 +116,6 @@ function NewRunSwitcher(props: PageProps) {
   const pipelineSpecInVersion = pipelineVersion?.pipeline_spec;
   const templateStrFromSpec = pipelineSpecInVersion ? JsYaml.safeDump(pipelineSpecInVersion) : '';
 
-  const { isFetching: v1TemplateStrIsFetching, data: v1Template } = useQuery<string, Error>(
-    ['v1PipelineVersionTemplate', pipelineVersionIdParam],
-    async () => {
-      if (!(pipelineId && pipelineVersionId)) {
-        throw new Error('Pipeline id or pipeline Version ID is missing');
-      }
-
-      let v1TemplateResponse;
-      if (pipelineVersionId) {
-        v1TemplateResponse = await Apis.pipelineServiceApi.getPipelineVersionTemplate(
-          pipelineVersionId,
-        );
-        return v1TemplateResponse.template || '';
-      } else {
-        v1TemplateResponse = await Apis.pipelineServiceApi.getTemplate(pipelineId);
-      }
-      return v1TemplateResponse.template || '';
-    },
-    { enabled: !!pipelineId || !!pipelineVersionId, staleTime: Infinity, cacheTime: 0 },
-  );
-  const v1TemplateStr = v1Template || '';
-
   const { isFetching: experimentIsFetching, data: experiment } = useQuery<V2beta1Experiment, Error>(
     ['experiment', experimentId],
     async () => {
@@ -151,34 +127,19 @@ function NewRunSwitcher(props: PageProps) {
     { enabled: !!experimentId, staleTime: Infinity },
   );
 
-  // Three possible sources for template string
+  // Two V2 sources for the pipeline spec:
   // 1. pipelineManifest: pipeline_spec stored in run or recurring run created by SDK
   // 2. templateStrFromSpec: pipeline_spec stored in pipeline_version
-  // 3. v1TemplateStr: pipelines created by v1 API (no pipeline_spec field)
-  const templateString = pipelineManifest ?? (templateStrFromSpec || v1TemplateStr);
+  const templateString = pipelineManifest ?? templateStrFromSpec;
 
   if (
     v2RunIsFetching ||
     recurringRunIsFetching ||
     pipelineIsFetching ||
     pipelineVersionIsFetching ||
-    (!isTemplateV2(templateString) && v1TemplateStrIsFetching) ||
     experimentIsFetching
   ) {
     return <div>Currently loading pipeline information</div>;
-  }
-
-  if (templateString && !isTemplateV2(templateString)) {
-    return (
-      <NewRun
-        {...props}
-        namespace={namespace}
-        existingPipelineId={pipelineIdFromPipeline}
-        handlePipelineIdChange={setPipelineIdFromPipeline}
-        existingPipelineVersionId={pipelineVersionIdParam}
-        handlePipelineVersionIdChange={setPipelineVersionIdParam}
-      />
-    );
   }
 
   return (

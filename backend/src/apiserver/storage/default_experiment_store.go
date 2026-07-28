@@ -15,14 +15,12 @@
 package storage
 
 import (
-	"database/sql"
-
 	sq "github.com/Masterminds/squirrel"
 	"github.com/golang/glog"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
 )
 
-var defaultExperimentDBValue = sq.Eq{"DefaultExperimentId": ""}
+var defaultExperimentDBValue = sq.Eq{"defaultexperimentid": ""}
 
 type DefaultExperimentStoreInterface interface {
 	GetDefaultExperimentId() (string, error)
@@ -82,8 +80,8 @@ func (s *DefaultExperimentStore) initializeDefaultExperimentTable() error {
 func (s *DefaultExperimentStore) SetDefaultExperimentId(id string) error {
 	sql, args, err := sq.
 		Update("default_experiments").
-		SetMap(sq.Eq{"DefaultExperimentId": id}).
-		Where(sq.Eq{"DefaultExperimentId": ""}).
+		SetMap(sq.Eq{"defaultexperimentid": id}).
+		Where(sq.Eq{"defaultexperimentid": ""}).
 		ToSql()
 	if err != nil {
 		return util.NewInternalServerError(err, "Error creating query to set default experiment ID")
@@ -97,7 +95,7 @@ func (s *DefaultExperimentStore) SetDefaultExperimentId(id string) error {
 
 func (s *DefaultExperimentStore) GetDefaultExperimentId() (string, error) {
 	var defaultExperimentId string
-	sql, args, err := sq.Select("DefaultExperimentId").From("default_experiments").ToSql()
+	sql, args, err := sq.Select("defaultexperimentid").From("default_experiments").ToSql()
 	if err != nil {
 		return "", util.NewInternalServerError(err, "Error creating query to get default experiment ID")
 	}
@@ -128,11 +126,11 @@ func (s *DefaultExperimentStore) GetDefaultExperimentId() (string, error) {
 // needed as input.
 // Update is used instead of delete so that we don't need to first check that the experiment ID is
 // there.
-func (s *DefaultExperimentStore) UnsetDefaultExperimentIdIfIdMatches(tx *sql.Tx, id string) error {
+func (s *DefaultExperimentStore) UnsetDefaultExperimentIdIfIdMatches(tx *Tx, id string) error {
 	sql, args, err := sq.
 		Update("default_experiments").
-		SetMap(sq.Eq{"DefaultExperimentId": ""}).
-		Where(sq.Eq{"DefaultExperimentId": id}).
+		SetMap(sq.Eq{"defaultexperimentid": ""}).
+		Where(sq.Eq{"defaultexperimentid": id}).
 		ToSql()
 	if err != nil {
 		return util.NewInternalServerError(err, "Failed to create command to clear default experiment with ID: %s", id)

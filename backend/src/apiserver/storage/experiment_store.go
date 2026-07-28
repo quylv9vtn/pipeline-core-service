@@ -40,7 +40,6 @@ type ExperimentStore struct {
 	db                     *DB
 	time                   util.TimeInterface
 	uuid                   util.UUIDGeneratorInterface
-	resourceReferenceStore *ResourceReferenceStore
 	defaultExperimentStore *DefaultExperimentStore
 }
 
@@ -289,11 +288,6 @@ func (s *ExperimentStore) DeleteExperiment(id string) error {
 		tx.Rollback()
 		return util.NewInternalServerError(err, "Failed to clear default experiment ID for experiment %v ", id)
 	}
-	err = s.resourceReferenceStore.DeleteResourceReferences(tx, id, model.RunResourceType)
-	if err != nil {
-		tx.Rollback()
-		return util.NewInternalServerError(err, "Failed to delete resource references from table for experiment %v ", id)
-	}
 	err = tx.Commit()
 	if err != nil {
 		return util.NewInternalServerError(err, "Failed to delete experiment %v and its resource references from table", id)
@@ -317,16 +311,6 @@ func (s *ExperimentStore) ArchiveExperiment(expId string) error {
 			"Failed to create query to archive experiment %s. error: '%v'", expId, err.Error())
 	}
 
-	var updateRunsArgs []interface{}
-	updateRunsArgs = append(updateRunsArgs, model.StorageStateArchived.ToString(), model.RunResourceType, expId, model.ExperimentResourceType)
-	// TODO(gkcalat): deprecate resource_references table once we migrate to v2beta1 and switch to filtering on Run's 'experiment_id' instead.
-	updateRunsSQL := s.db.UpdateWithJointOrFrom(
-		"run_details",
-		"resource_references",
-		"StorageState = ?",
-		"run_details.UUID = resource_references.ResourceUUID",
-		"resource_references.ResourceType = ? AND resource_references.ReferenceUUID = ? AND resource_references.ReferenceType = ?")
-
 	updateRunsWithExperimentUUIDSql, updateRunsWithExperimentUUIDArgs, err := sq.
 		Update("run_details").
 		SetMap(sq.Eq{
@@ -340,16 +324,16 @@ func (s *ExperimentStore) ArchiveExperiment(expId string) error {
 			"Failed to create query to archive the runs in an experiment %s. error: '%v'", expId, err.Error())
 	}
 
-	var updateJobsArgs []interface{}
 	now := s.time.Now().Unix()
-	updateJobsArgs = append(updateJobsArgs, false, now, model.JobResourceType, expId, model.ExperimentResourceType)
-	// TODO(gkcalat): deprecate resource_references table once we migrate to v2beta1 and switch to filtering on Job's `experiment_id' instead.
-	updateJobsSQL := s.db.UpdateWithJointOrFrom(
-		"jobs",
-		"resource_references",
-		"Enabled = ?, UpdatedAtInSec = ?",
-		"jobs.UUID = resource_references.ResourceUUID",
-		"resource_references.ResourceType = ? AND resource_references.ReferenceUUID = ? AND resource_references.ReferenceType = ?")
+	updateJobsSQL, updateJobsArgs, err := sq.
+		Update("jobs").
+		SetMap(sq.Eq{"Enabled": false, "UpdatedAtInSec": now}).
+		Where(sq.Eq{"ExperimentUUID": expId}).
+		ToSql()
+	if err != nil {
+		return util.NewInternalServerError(err,
+			"Failed to create query to disable recurring runs in experiment %s: %v", expId, err)
+	}
 
 	// In a single transaction, we update experiments, run_details and jobs tables.
 	tx, err := s.db.Begin()
@@ -362,13 +346,6 @@ func (s *ExperimentStore) ArchiveExperiment(expId string) error {
 		tx.Rollback()
 		return util.NewInternalServerError(err,
 			"Failed to archive experiment %s. error: '%v'", expId, err.Error())
-	}
-
-	_, err = tx.Exec(updateRunsSQL, updateRunsArgs...)
-	if err != nil {
-		tx.Rollback()
-		return util.NewInternalServerError(err,
-			"Failed to archive runs with experiment reference being %s. error: '%v'", expId, err.Error())
 	}
 
 	_, err = tx.Exec(updateRunsWithExperimentUUIDSql, updateRunsWithExperimentUUIDArgs...)
@@ -447,7 +424,6 @@ func NewExperimentStore(db *DB, time util.TimeInterface, uuid util.UUIDGenerator
 		db:                     db,
 		time:                   time,
 		uuid:                   uuid,
-		resourceReferenceStore: NewResourceReferenceStore(db, nil),
 		defaultExperimentStore: NewDefaultExperimentStore(db),
 	}
 }

@@ -16,5 +16,5 @@ package model
 
 type DefaultExperiment struct {
 	// nolint:staticcheck // [ST1003] Field name matches upstream legacy naming
-	DefaultExperimentId string `gorm:"column:DefaultExperimentId; not null; primaryKey;type:varchar(191);"`
+	DefaultExperimentId string `gorm:"column:defaultexperimentid; not null; primaryKey;type:varchar(191);"`
 }

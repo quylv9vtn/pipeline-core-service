@@ -20,14 +20,12 @@ import { useQuery } from 'react-query';
 import { V2beta1RecurringRun } from 'src/apisv2beta1/recurringrun';
 import { RouteParams } from 'src/components/Router';
 import { Apis } from 'src/lib/Apis';
-import * as WorkflowUtils from 'src/lib/v2/WorkflowUtils';
 import { PageProps } from './Page';
-import RecurringRunDetails from './RecurringRunDetails';
 import RecurringRunDetailsV2 from './RecurringRunDetailsV2';
 import { RecurringRunDetailsV2FC } from 'src/pages/functional_components/RecurringRunDetailsV2FC';
 import { FeatureKey, isFeatureEnabled } from 'src/features';
 
-// This is a router to determine whether to show V1 or V2 recurring run details page.
+// KFP is V2-only: every recurring run is rendered by the V2 page.
 export default function RecurringRunDetailsRouter(props: PageProps) {
   const recurringRunId = props.match.params[RouteParams.recurringRunId];
   let pipelineManifest: string | undefined;
@@ -73,22 +71,19 @@ export default function RecurringRunDetailsRouter(props: PageProps) {
     { enabled: !!pipelineId && !!pipelineVersionId, staleTime: Infinity, cacheTime: Infinity },
   );
 
-  const templateString = pipelineManifest ?? templateStrFromPipelineVersion;
+  const _templateString = pipelineManifest ?? templateStrFromPipelineVersion;
 
-  if (getRecurringRunSuccess && v2RecurringRun && templateString) {
-    const isV2Pipeline = WorkflowUtils.isPipelineSpec(templateString);
-    if (isV2Pipeline) {
-      return isFeatureEnabled(FeatureKey.FUNCTIONAL_COMPONENT) ? (
-        <RecurringRunDetailsV2FC {...props} />
-      ) : (
-        <RecurringRunDetailsV2 {...props} />
-      );
-    }
+  if (getRecurringRunSuccess && v2RecurringRun) {
+    return isFeatureEnabled(FeatureKey.FUNCTIONAL_COMPONENT) ? (
+      <RecurringRunDetailsV2FC {...props} />
+    ) : (
+      <RecurringRunDetailsV2 {...props} />
+    );
   }
 
   if (recurringRunIsFetching || templateStrIsFetching) {
     return <div>Currently loading recurring run information</div>;
   }
 
-  return <RecurringRunDetails {...props} />;
+  return <div>Recurring run information is unavailable</div>;
 }

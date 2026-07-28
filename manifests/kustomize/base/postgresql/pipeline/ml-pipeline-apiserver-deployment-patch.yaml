@@ -7,8 +7,19 @@ spec:
     spec:
       containers:
       - name: ml-pipeline-api-server
+        command:
+        - /bin/sh
+        - -c
+        args:
+        - /bin/apiserver --config=/config -logtostderr=true --logLevel=${LOG_LEVEL}
         env:
         - $patch: replace
+        - name: PUBLISH_LOGS
+          value: "true"
+        - name: LOG_LEVEL
+          value: "info"
+        - name: PIPELINE_LOG_LEVEL
+          value: "1"
         - name: AUTO_UPDATE_PIPELINE_DEFAULT_VERSION
           valueFrom:
             configMapKeyRef:
@@ -19,6 +30,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: CLUSTER_DOMAIN
+          value: "cluster.local"
         - name: OBJECTSTORECONFIG_SECURE
           value: "false"
         - name: OBJECTSTORECONFIG_BUCKETNAME
@@ -27,29 +40,21 @@ spec:
               name: pipeline-install-config
               key: bucketName
               optional: true
+        - name: OBJECTSTORECONFIG_HOST
+          value: "seaweedfs.kubeflow"
+        - name: OBJECTSTORECONFIG_PORT
+          value: "9000"
         - name: DBCONFIG_CONMAXLIFETIME
           valueFrom:
             configMapKeyRef:
               name: pipeline-install-config
               key: ConMaxLifeTime
               optional: true
-        - name: DB_DRIVER_NAME
+        - name: DBDRIVERNAME
           valueFrom:
             configMapKeyRef:
               name: pipeline-install-config
               key: dbType
-              optional: true
-        - name: BLOCK_V1_PIPELINES
-          valueFrom:
-            configMapKeyRef:
-              name: pipeline-install-config
-              key: BLOCK_V1_PIPELINES
-              optional: true
-        - name: V1_ALLOWED_NAMESPACES
-          valueFrom:
-            configMapKeyRef:
-              name: pipeline-install-config
-              key: V1_ALLOWED_NAMESPACES
               optional: true
         # PostgreSQL Config
         - name: DBCONFIG_POSTGRESQLCONFIG_USER
@@ -91,3 +96,27 @@ spec:
             secretKeyRef:
               name: mlpipeline-minio-artifact
               key: secretkey
+        - name: V2_DRIVER_IMAGE
+          value: ghcr.io/kubeflow/kfp-driver:2.16.1
+        - name: V2_LAUNCHER_IMAGE
+          value: ghcr.io/kubeflow/kfp-launcher:2.16.1
+        - name: COMPILED_PIPELINE_SPEC_PATCH
+          value: "{}"
+        - name: DEFAULT_SECURITY_CONTEXT_RUN_AS_USER
+          valueFrom:
+            configMapKeyRef:
+              name: pipeline-install-config
+              key: defaultSecurityContextRunAsUser
+              optional: true
+        - name: DEFAULT_SECURITY_CONTEXT_RUN_AS_GROUP
+          valueFrom:
+            configMapKeyRef:
+              name: pipeline-install-config
+              key: defaultSecurityContextRunAsGroup
+              optional: true
+        - name: DEFAULT_SECURITY_CONTEXT_RUN_AS_NON_ROOT
+          valueFrom:
+            configMapKeyRef:
+              name: pipeline-install-config
+              key: defaultSecurityContextRunAsNonRoot
+              optional: true

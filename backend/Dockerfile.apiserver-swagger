@@ -1,0 +1,32 @@
+FROM golang:1.24-bookworm AS builder
+
+RUN apt-get update && apt-get install -y cmake clang musl-dev openssl
+WORKDIR /go/src/github.com/kubeflow/pipelines
+COPY ./go.mod ./
+COPY ./go.sum ./
+COPY ./kubernetes_platform/go.mod ./kubernetes_platform/go.mod
+COPY ./api/go.mod ./api/go.mod
+RUN GO111MODULE=on go mod download
+COPY . .
+RUN GO111MODULE=on go build -o /bin/apiserver backend/src/apiserver/*.go
+
+FROM debian:stable
+
+ARG COMMIT_SHA=unknown
+ENV COMMIT_SHA=${COMMIT_SHA}
+ARG TAG_NAME=unknown
+ENV TAG_NAME=${TAG_NAME}
+ENV LOG_LEVEL=info
+
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /opt/kfp/swagger
+COPY backend/src/apiserver/config/ /config
+COPY --from=builder /bin/apiserver /bin/apiserver
+COPY backend/api/v2beta1/swagger/kfp_api_single_file.swagger.json /opt/kfp/swagger/kfp_api_v2beta1.swagger.json
+
+RUN chmod +x /bin/apiserver
+
+EXPOSE 8888
+CMD ["/bin/sh", "-c", "/bin/apiserver --config=/config --sampleconfig=/config/sample_config.json -logtostderr=true --logLevel=${LOG_LEVEL}"]

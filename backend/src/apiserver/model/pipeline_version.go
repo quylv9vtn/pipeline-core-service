@@ -37,7 +37,7 @@ type PipelineVersion struct {
 	Name        string `gorm:"column:Name; not null; type:varchar(127); uniqueIndex:idx_pipelineid_name;"`
 	DisplayName string `gorm:"column:DisplayName; not null"`
 	// TODO(gkcalat): this is deprecated. Consider removing and adding data migration logic at the server startup.
-	Parameters LargeText `gorm:"column:Parameters; not null;"` // deprecated
+	Parameters LargeText `gorm:"-"` // removed from the V2-only schema
 	// PipelineVersion belongs to Pipeline. If a pipeline with a specific UUID
 	// is deleted from Pipeline table, all this pipeline's versions will be
 	// deleted from PipelineVersion table.

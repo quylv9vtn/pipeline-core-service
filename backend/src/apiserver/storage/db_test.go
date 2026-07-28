@@ -135,3 +135,18 @@ func TestSQLiteDialect_UpdateWithJointOrFrom(t *testing.T) {
 	expectedQuery := `UPDATE target_table SET State = ? FROM other_table WHERE target_table.Name = other_table.Name AND target_table.status = ?`
 	assert.Equal(t, expectedQuery, actualQuery)
 }
+
+func TestPostgreSQLDialect_Rebind(t *testing.T) {
+	dialect := NewPostgreSQLDialect()
+	actual := dialect.Rebind("SELECT * FROM pipelines WHERE Namespace = ? AND Status = ?")
+	assert.Equal(t, "SELECT * FROM pipelines WHERE \"Namespace\" = $1 AND \"Status\" = $2", actual)
+	actual = dialect.Rebind(`SELECT CONCAT("[", Payload, "]") FROM resource_references WHERE ResourceType='Run'`)
+	assert.Equal(t, `SELECT CONCAT('[', "Payload", ']') FROM resource_references WHERE "ResourceType"='Run'`, actual)
+	actual = dialect.Rebind("SELECT UUID FROM experiments WHERE uuid = ?")
+	assert.Equal(t, `SELECT "UUID" FROM experiments WHERE "UUID" = $1`, actual)
+}
+
+func TestPostgreSQLDialect_GroupConcat(t *testing.T) {
+	dialect := NewPostgreSQLDialect()
+	assert.Equal(t, "STRING_AGG(r.Payload, ',')", dialect.GroupConcat("r.Payload", ","))
+}

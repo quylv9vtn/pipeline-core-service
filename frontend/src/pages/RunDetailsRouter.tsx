@@ -20,20 +20,26 @@ import { useQuery } from 'react-query';
 import { V2beta1Run } from 'src/apisv2beta1/run';
 import { RouteParams } from 'src/components/Router';
 import { Apis } from 'src/lib/Apis';
-import * as WorkflowUtils from 'src/lib/v2/WorkflowUtils';
-import EnhancedRunDetails, { RunDetailsProps } from 'src/pages/RunDetails';
+import { RunDetailsProps } from 'src/pages/RunDetails';
 import { RunDetailsV2 } from 'src/pages/RunDetailsV2';
 
-// This is a router to determine whether to show V1 or V2 run detail page.
+// KFP is V2-only: every run detail is rendered by the V2 page.
 export default function RunDetailsRouter(props: RunDetailsProps) {
   const runId = props.match.params[RouteParams.runId];
   let pipelineManifest: string | undefined;
 
   // Retrieves v2 run detail.
-  const { isSuccess: getV2RunSuccess, isFetching: runIsFetching, data: v2Run } = useQuery<
-    V2beta1Run,
-    Error
-  >(['v2_run_detail', { id: runId }], () => Apis.runServiceApiV2.getRun(runId), {});
+  const {
+    isLoading: isV2RunLoading,
+    isSuccess: getV2RunSuccess,
+    isError: isV2RunError,
+    error: v2RunError,
+    data: v2Run,
+  } = useQuery<V2beta1Run, Error>(
+    ['v2_run_detail', { id: runId }],
+    () => Apis.runServiceApiV2.getRun(runId),
+    {},
+  );
 
   if (getV2RunSuccess && v2Run && v2Run.pipeline_spec) {
     pipelineManifest = JsYaml.safeDump(v2Run.pipeline_spec);
@@ -42,10 +48,15 @@ export default function RunDetailsRouter(props: RunDetailsProps) {
   const pipelineId = v2Run?.pipeline_version_reference?.pipeline_id;
   const pipelineVersionId = v2Run?.pipeline_version_reference?.pipeline_version_id;
 
-  const { isFetching: templateStrIsFetching, data: templateStrFromPipelineVersion } = useQuery<
-    string,
-    Error
-  >(
+  const shouldLoadPipelineVersion =
+    !pipelineManifest && !!pipelineId && !!pipelineVersionId;
+
+  const {
+    isLoading: isPipelineVersionLoading,
+    isError: isPipelineVersionError,
+    error: pipelineVersionError,
+    data: templateStrFromPipelineVersion,
+  } = useQuery<string, Error>(
     ['PipelineVersionTemplate', { pipelineId, pipelineVersionId }],
     async () => {
       if (!pipelineId || !pipelineVersionId) {
@@ -58,17 +69,34 @@ export default function RunDetailsRouter(props: RunDetailsProps) {
       const pipelineSpec = pipelineVersion.pipeline_spec;
       return pipelineSpec ? JsYaml.safeDump(pipelineSpec) : '';
     },
-    { enabled: !!pipelineVersionId, staleTime: Infinity, cacheTime: Infinity },
+    {
+      enabled: shouldLoadPipelineVersion,
+      staleTime: Infinity,
+      cacheTime: Infinity,
+    },
   );
 
   const templateString = pipelineManifest ?? templateStrFromPipelineVersion;
 
-  if (getV2RunSuccess && v2Run && templateString) {
-    const isV2Pipeline = WorkflowUtils.isPipelineSpec(templateString);
-    if (isV2Pipeline) {
-      return <RunDetailsV2 pipeline_job={templateString} run={v2Run} {...props} />;
-    }
+  if (isV2RunLoading || (shouldLoadPipelineVersion && isPipelineVersionLoading)) {
+    return <div>Currently loading run information</div>;
   }
 
-  return <EnhancedRunDetails {...props} isLoading={runIsFetching || templateStrIsFetching} />;
+  if (isV2RunError) {
+    return <div>Failed to load run: {v2RunError?.message}</div>;
+  }
+
+  if (isPipelineVersionError) {
+    return <div>Failed to load pipeline version: {pipelineVersionError?.message}</div>;
+  }
+
+  if (getV2RunSuccess && v2Run && templateString) {
+    return <RunDetailsV2 pipeline_job={templateString} run={v2Run} {...props} />;
+  }
+
+  if (getV2RunSuccess && v2Run) {
+    return <div>Pipeline specification is not available for this run.</div>;
+  }
+
+  return <div>Currently loading run information</div>;
 }

@@ -70,7 +70,6 @@ var (
 		"pipeline_versions.CreatedAtInSec",
 		"pipeline_versions.Name",
 		"pipeline_versions.DisplayName",
-		"pipeline_versions.Parameters",
 		"pipeline_versions.PipelineId",
 		"pipeline_versions.Status",
 		"pipeline_versions.CodeSourceUrl",
@@ -567,9 +566,6 @@ func (s *PipelineStore) CreatePipelineAndPipelineVersion(p *model.Pipeline, pv *
 				"Description":    newPipeline.Description,
 				"Status":         string(newPipeline.Status),
 				"Namespace":      newPipeline.Namespace,
-				// Parameters and DefaultVersionId are deprecated and set to empty string
-				"DefaultVersionId": "",
-				"Parameters":       "",
 			},
 		).
 		ToSql()
@@ -584,7 +580,6 @@ func (s *PipelineStore) CreatePipelineAndPipelineVersion(p *model.Pipeline, pv *
 				"CreatedAtInSec":  newPipelineVersion.CreatedAtInSec,
 				"Name":            newPipelineVersion.Name,
 				"DisplayName":     newPipelineVersion.DisplayName,
-				"Parameters":      newPipelineVersion.Parameters,
 				"PipelineId":      newPipelineVersion.PipelineId,
 				"Status":          string(newPipelineVersion.Status),
 				"CodeSourceUrl":   newPipelineVersion.CodeSourceUrl,
@@ -654,9 +649,6 @@ func (s *PipelineStore) CreatePipeline(p *model.Pipeline) (*model.Pipeline, erro
 				"Description":    newPipeline.Description,
 				"Status":         string(newPipeline.Status),
 				"Namespace":      newPipeline.Namespace,
-				// Parameters and DefaultVersionId are deprecated and set to empty string
-				"DefaultVersionId": "",
-				"Parameters":       "",
 			},
 		).
 		ToSql()
@@ -741,7 +733,6 @@ func (s *PipelineStore) CreatePipelineVersion(pv *model.PipelineVersion) (*model
 				"CreatedAtInSec":  newPipelineVersion.CreatedAtInSec,
 				"Name":            newPipelineVersion.Name,
 				"DisplayName":     newPipelineVersion.DisplayName,
-				"Parameters":      newPipelineVersion.Parameters,
 				"PipelineId":      newPipelineVersion.PipelineId,
 				"Status":          string(newPipelineVersion.Status),
 				"CodeSourceUrl":   newPipelineVersion.CodeSourceUrl,
@@ -884,14 +875,13 @@ func (s *PipelineStore) getPipelineVersionByCol(colName, colVal string, status m
 func (s *PipelineStore) scanPipelineVersionsRows(rows *sql.Rows) ([]*model.PipelineVersion, error) {
 	var pipelineVersions []*model.PipelineVersion
 	for rows.Next() {
-		var uuid, name, displayName, parameters, pipelineId, codeSourceUrl, status, description, pipelineSpec, pipelineSpecURI sql.NullString
+		var uuid, name, displayName, pipelineId, codeSourceUrl, status, description, pipelineSpec, pipelineSpecURI sql.NullString
 		var createdAtInSec sql.NullInt64
 		if err := rows.Scan(
 			&uuid,
 			&createdAtInSec,
 			&name,
 			&displayName,
-			&parameters,
 			&pipelineId,
 			&status,
 			&codeSourceUrl,
@@ -909,7 +899,6 @@ func (s *PipelineStore) scanPipelineVersionsRows(rows *sql.Rows) ([]*model.Pipel
 					CreatedAtInSec:  createdAtInSec.Int64,
 					Name:            name.String,
 					DisplayName:     displayName.String,
-					Parameters:      model.LargeText(parameters.String),
 					PipelineId:      pipelineId.String,
 					CodeSourceUrl:   codeSourceUrl.String,
 					Status:          model.PipelineVersionStatus(status.String),

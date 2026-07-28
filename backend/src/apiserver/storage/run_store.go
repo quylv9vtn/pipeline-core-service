@@ -46,7 +46,6 @@ var runColumns = []string{
 	"PipelineName",
 	"PipelineSpecManifest",
 	"WorkflowSpecManifest",
-	"Parameters",
 	"RuntimeParameters",
 	"PipelineRoot",
 	"PipelineRuntimeManifest",
@@ -56,15 +55,6 @@ var runColumns = []string{
 	"StateHistory",
 	"PipelineContextId",
 	"PipelineRunContextId",
-}
-
-var runMetricsColumns = []string{
-	"RunUUID",
-	"NodeID",
-	"Name",
-	"NumberValue",
-	"Format",
-	"Payload",
 }
 
 type RunStoreInterface interface {
@@ -90,17 +80,13 @@ type RunStoreInterface interface {
 	// Deletes a run.
 	DeleteRun(runId string) error
 
-	// Creates a new metric entry.
-	CreateMetric(metric *model.RunMetric) (err error)
-
 	// Terminates a run.
 	TerminateRun(runId string) error
 }
 
 type RunStore struct {
-	db                     *DB
-	resourceReferenceStore *ResourceReferenceStore
-	time                   util.TimeInterface
+	db   *DB
+	time util.TimeInterface
 }
 
 // Runs two SQL queries in a transaction to return a list of matching runs, as well as their
@@ -189,9 +175,13 @@ func (s *RunStore) buildSelectRunsQuery(selectCount bool, opts *list.Options,
 	} else if refKey != nil && refKey.Type == model.NamespaceResourceType && (refKey.ID != "" || common.IsMultiUserMode()) {
 		filteredSelectBuilder, err = list.FilterOnNamespace("run_details", runColumns,
 			selectCount, refKey.ID)
+	} else if refKey == nil || (refKey.ID == "" && !common.IsMultiUserMode()) {
+		filteredSelectBuilder = sq.Select(runColumns...).From("run_details")
+		if selectCount {
+			filteredSelectBuilder = sq.Select("count(*)").From("run_details")
+		}
 	} else {
-		filteredSelectBuilder, err = list.FilterOnResourceReference("run_details", runColumns,
-			model.RunResourceType, selectCount, filterContext)
+		return "", nil, util.NewInvalidInputError("Unsupported V2 run reference filter: %s", refKey.Type)
 	}
 	if err != nil {
 		return "", nil, util.NewInternalServerError(err, "Failed to list runs: %v", err)
@@ -202,9 +192,8 @@ func (s *RunStore) buildSelectRunsQuery(selectCount bool, opts *list.Options,
 	// If we're not just counting, then also add select columns and perform a left join
 	// to get resource reference information. Also add pagination.
 	if !selectCount {
-		sqlBuilder = s.addSortByRunMetricToSelect(sqlBuilder, opts)
 		sqlBuilder = opts.AddPaginationToSelect(sqlBuilder)
-		sqlBuilder = s.addMetricsResourceReferencesAndTasks(sqlBuilder, opts)
+		sqlBuilder = s.addTasks(sqlBuilder)
 		sqlBuilder = opts.AddSortingToSelect(sqlBuilder)
 	}
 	sql, args, err := sqlBuilder.ToSql()
@@ -216,11 +205,11 @@ func (s *RunStore) buildSelectRunsQuery(selectCount bool, opts *list.Options,
 
 // GetRun Get the run manifest from Workflow CRD.
 func (s *RunStore) GetRun(runId string) (*model.Run, error) {
-	sql, args, err := s.addMetricsResourceReferencesAndTasks(
+	sql, args, err := s.addTasks(
 		sq.Select(runColumns...).
 			From("run_details").
 			Where(sq.Eq{"UUID": runId}).
-			Limit(1), nil).
+			Limit(1)).
 		ToSql()
 	if err != nil {
 		return nil, util.NewInternalServerError(err, "Failed to get run: %v", err.Error())
@@ -254,57 +243,27 @@ func apply(f func(string) string, vs []string) []string {
 	return vsm
 }
 
-func (s *RunStore) addMetricsResourceReferencesAndTasks(filteredSelectBuilder sq.SelectBuilder, opts *list.Options) sq.SelectBuilder {
-	var r model.Run
-	resourceRefConcatQuery := s.db.Concat([]string{`"["`, s.db.GroupConcat("rr.Payload", ","), `"]"`}, "")
-	columnsAfterJoiningResourceReferences := append(
-		apply(func(column string) string { return "rd." + column }, runColumns), // Add prefix "rd." to runColumns
-		resourceRefConcatQuery+" AS refs")
-	if opts != nil && !r.IsRegularField(opts.SortByFieldName) {
-		columnsAfterJoiningResourceReferences = append(columnsAfterJoiningResourceReferences, "rd."+opts.SortByFieldName)
-	}
-	subQ := sq.
-		Select(columnsAfterJoiningResourceReferences...).
-		FromSelect(filteredSelectBuilder, "rd").
-		LeftJoin("resource_references AS rr ON rr.ResourceType='Run' AND rd.UUID=rr.ResourceUUID").
-		GroupBy("rd.UUID")
-
+func (s *RunStore) addTasks(filteredSelectBuilder sq.SelectBuilder) sq.SelectBuilder {
+	rdGroupBy := apply(func(column string) string { return "rd." + column }, runColumns)
 	tasksConcatQuery := s.db.Concat([]string{`"["`, s.db.GroupConcat("tasks.Payload", ","), `"]"`}, "")
 	columnsAfterJoiningTasks := append(
-		apply(func(column string) string { return "rdref." + column }, runColumns),
-		"rdref.refs",
+		apply(func(column string) string { return "rd." + column }, runColumns),
 		tasksConcatQuery+" AS taskDetails")
-	if opts != nil && !r.IsRegularField(opts.SortByFieldName) {
-		columnsAfterJoiningTasks = append(columnsAfterJoiningTasks, "rdref."+opts.SortByFieldName)
-	}
-	subQ = sq.
-		Select(columnsAfterJoiningTasks...).
-		FromSelect(subQ, "rdref").
-		LeftJoin("tasks AS tasks ON rdref.UUID=tasks.RunUUID").
-		GroupBy("rdref.UUID")
-
-	// TODO(jingzhang36): address the case where some runs don't have the metric used in order by.
-	metricConcatQuery := s.db.Concat([]string{`"["`, s.db.GroupConcat("rm.Payload", ","), `"]"`}, "")
-	columnsAfterJoiningRunMetrics := append(
-		apply(func(column string) string { return "subq." + column }, runColumns), // Add prefix "subq." to runColumns
-		"subq.refs",
-		"subq.taskDetails",
-		metricConcatQuery+" AS metrics")
 	return sq.
-		Select(columnsAfterJoiningRunMetrics...).
-		FromSelect(subQ, "subq").
-		LeftJoin("run_metrics AS rm ON subq.UUID=rm.RunUUID").
-		GroupBy("subq.UUID")
+		Select(columnsAfterJoiningTasks...).
+		FromSelect(filteredSelectBuilder, "rd").
+		LeftJoin("tasks ON rd.UUID=tasks.RunUUID").
+		GroupBy(rdGroupBy...)
 }
 
 func (s *RunStore) scanRowsToRuns(rows *sql.Rows) ([]*model.Run, error) {
 	var runs []*model.Run
 	for rows.Next() {
 		var uuid, experimentUUID, displayName, name, storageState, namespace, serviceAccount, conditions, description, pipelineId,
-			pipelineName, pipelineSpecManifest, workflowSpecManifest, parameters, pipelineRuntimeManifest,
+			pipelineName, pipelineSpecManifest, workflowSpecManifest, pipelineRuntimeManifest,
 			workflowRuntimeManifest string
 		var createdAtInSec, scheduledAtInSec, finishedAtInSec, pipelineContextId, pipelineRunContextId sql.NullInt64
-		var metricsInString, resourceReferencesInString, tasksInString, runtimeParameters, pipelineRoot, jobId, state, stateHistory, pipelineVersionId sql.NullString
+		var tasksInString, runtimeParameters, pipelineRoot, jobId, state, stateHistory, pipelineVersionId sql.NullString
 		err := rows.Scan(
 			&uuid,
 			&experimentUUID,
@@ -323,7 +282,6 @@ func (s *RunStore) scanRowsToRuns(rows *sql.Rows) ([]*model.Run, error) {
 			&pipelineName,
 			&pipelineSpecManifest,
 			&workflowSpecManifest,
-			&parameters,
 			&runtimeParameters,
 			&pipelineRoot,
 			&pipelineRuntimeManifest,
@@ -333,25 +291,11 @@ func (s *RunStore) scanRowsToRuns(rows *sql.Rows) ([]*model.Run, error) {
 			&stateHistory,
 			&pipelineContextId,
 			&pipelineRunContextId,
-			&resourceReferencesInString,
 			&tasksInString,
-			&metricsInString,
 		)
 		if err != nil {
 			glog.Errorf("Failed to scan row into a run: %v", err)
 			return runs, nil
-		}
-		metrics, err := parseMetrics(metricsInString)
-		if err != nil {
-			glog.Errorf("Failed to parse metrics (%v) from DB: %v", metricsInString, err)
-			// Skip the error to allow user to get runs even when metrics data
-			// are invalid.
-			metrics = []*model.RunMetric{}
-		}
-		resourceReferences, err := parseResourceReferences(resourceReferencesInString)
-		if err != nil {
-			// throw internal exception if failed to parse the resource reference.
-			return nil, util.NewInternalServerError(err, "Failed to parse resource reference")
 		}
 		tasks, err := parseTaskDetails(tasksInString)
 		if err != nil {
@@ -359,23 +303,6 @@ func (s *RunStore) scanRowsToRuns(rows *sql.Rows) ([]*model.Run, error) {
 		}
 		jId := jobId.String
 		pvId := pipelineVersionId.String
-		if len(resourceReferences) > 0 {
-			if experimentUUID == "" {
-				experimentUUID = model.GetRefIdFromResourceReferences(resourceReferences, model.ExperimentResourceType)
-			}
-			if namespace == "" {
-				namespace = model.GetRefIdFromResourceReferences(resourceReferences, model.NamespaceResourceType)
-			}
-			if pipelineId == "" {
-				pipelineId = model.GetRefIdFromResourceReferences(resourceReferences, model.PipelineResourceType)
-			}
-			if pvId == "" {
-				pvId = model.GetRefIdFromResourceReferences(resourceReferences, model.PipelineVersionResourceType)
-			}
-			if jId == "" {
-				jId = model.GetRefIdFromResourceReferences(resourceReferences, model.JobResourceType)
-			}
-		}
 		runtimeConfig := parseRuntimeConfig(runtimeParameters, pipelineRoot)
 		var stateHistoryNew []*model.RuntimeStatus
 		if stateHistory.Valid {
@@ -404,15 +331,12 @@ func (s *RunStore) scanRowsToRuns(rows *sql.Rows) ([]*model.Run, error) {
 				TaskDetails:             tasks,
 				StateHistory:            stateHistoryNew,
 			},
-			Metrics:            metrics,
-			ResourceReferences: resourceReferences,
 			PipelineSpec: model.PipelineSpec{
 				PipelineId:           pipelineId,
 				PipelineVersionId:    pvId,
 				PipelineName:         pipelineName,
 				PipelineSpecManifest: model.LargeText(pipelineSpecManifest),
 				WorkflowSpecManifest: model.LargeText(workflowSpecManifest),
-				Parameters:           model.LargeText(parameters),
 				RuntimeConfig:        runtimeConfig,
 			},
 		}
@@ -420,17 +344,6 @@ func (s *RunStore) scanRowsToRuns(rows *sql.Rows) ([]*model.Run, error) {
 		runs = append(runs, run)
 	}
 	return runs, nil
-}
-
-func parseMetrics(metricsInString sql.NullString) ([]*model.RunMetric, error) {
-	if !metricsInString.Valid {
-		return nil, nil
-	}
-	var metrics []*model.RunMetric
-	if err := json.Unmarshal([]byte(metricsInString.String), &metrics); err != nil {
-		return nil, util.Wrapf(err, "Failed to parse a run metric '%s'", metricsInString.String)
-	}
-	return metrics, nil
 }
 
 func parseRuntimeConfig(runtimeParameters sql.NullString, pipelineRoot sql.NullString) model.RuntimeConfig {
@@ -442,17 +355,6 @@ func parseRuntimeConfig(runtimeParameters sql.NullString, pipelineRoot sql.NullS
 		pipelineRootString = pipelineRoot.String
 	}
 	return model.RuntimeConfig{Parameters: model.LargeText(runtimeParametersString), PipelineRoot: model.LargeText(pipelineRootString)}
-}
-
-func parseResourceReferences(resourceRefString sql.NullString) ([]*model.ResourceReference, error) {
-	if !resourceRefString.Valid {
-		return nil, nil
-	}
-	var refs []*model.ResourceReference
-	if err := json.Unmarshal([]byte(resourceRefString.String), &refs); err != nil {
-		return nil, util.Wrapf(err, "Failed to parse resource references '%s'", resourceRefString.String)
-	}
-	return refs, nil
 }
 
 func parseTaskDetails(tasksInString sql.NullString) ([]*model.Task, error) {
@@ -467,7 +369,7 @@ func parseTaskDetails(tasksInString sql.NullString) ([]*model.Task, error) {
 }
 
 func (s *RunStore) CreateRun(r *model.Run) (*model.Run, error) {
-	r = r.ToV1().ToV2()
+	r = r.ToV2()
 	if r.StorageState == "" || r.StorageState == model.StorageStateUnspecified || r.StorageState == model.StorageStateUnspecifiedV1 {
 		r.StorageState = model.StorageStateAvailable
 	}
@@ -510,7 +412,6 @@ func (s *RunStore) CreateRun(r *model.Run) (*model.Run, error) {
 			"PipelineName":            r.PipelineSpec.PipelineName,
 			"PipelineSpecManifest":    r.PipelineSpec.PipelineSpecManifest,
 			"WorkflowSpecManifest":    r.PipelineSpec.WorkflowSpecManifest,
-			"Parameters":              r.PipelineSpec.Parameters,
 			"RuntimeParameters":       r.PipelineSpec.RuntimeConfig.Parameters,
 			"PipelineRoot":            r.PipelineSpec.RuntimeConfig.PipelineRoot,
 			"PipelineVersionId":       r.PipelineSpec.PipelineVersionId,
@@ -535,13 +436,6 @@ func (s *RunStore) CreateRun(r *model.Run) (*model.Run, error) {
 		return nil, util.NewInternalServerError(err, "Failed to store run %v to table", r.DisplayName)
 	}
 
-	// TODO(gkcalat): consider moving resource reference management to ResourceManager
-	// and provide logic for data migration for v1beta1 data.
-	err = s.resourceReferenceStore.CreateResourceReferences(tx, r.ResourceReferences)
-	if err != nil {
-		tx.Rollback()
-		return nil, util.NewInternalServerError(err, "Failed to store resource references to table for run %v ", r.DisplayName)
-	}
 	err = tx.Commit()
 	if err != nil {
 		tx.Rollback()
@@ -551,7 +445,7 @@ func (s *RunStore) CreateRun(r *model.Run) (*model.Run, error) {
 }
 
 func (s *RunStore) UpdateRun(run *model.Run) error {
-	tx, err := s.db.DB.Begin()
+	tx, err := s.db.Begin()
 	if err != nil {
 		return util.NewInternalServerError(err, "transaction creation failed")
 	}
@@ -667,11 +561,6 @@ func (s *RunStore) DeleteRun(id string) error {
 		tx.Rollback()
 		return util.NewInternalServerError(err, "Failed to delete run %s from table", id)
 	}
-	err = s.resourceReferenceStore.DeleteResourceReferences(tx, id, model.RunResourceType)
-	if err != nil {
-		tx.Rollback()
-		return util.NewInternalServerError(err, "Failed to delete resource references from table for run %v ", id)
-	}
 	err = tx.Commit()
 	if err != nil {
 		tx.Rollback()
@@ -680,44 +569,11 @@ func (s *RunStore) DeleteRun(id string) error {
 	return nil
 }
 
-// Creates a new metric in run_metrics table if does not exist.
-func (s *RunStore) CreateMetric(metric *model.RunMetric) error {
-	payloadBytes, err := json.Marshal(metric)
-	if err != nil {
-		return util.NewInternalServerError(err,
-			"Failed to marshal a run metric to json: %+v", metric)
-	}
-	sql, args, err := sq.
-		Insert("run_metrics").
-		SetMap(sq.Eq{
-			"RunUUID":     metric.RunUUID,
-			"NodeID":      metric.NodeID,
-			"Name":        metric.Name,
-			"NumberValue": metric.NumberValue,
-			"Format":      metric.Format,
-			"Payload":     string(payloadBytes),
-		}).ToSql()
-	if err != nil {
-		return util.NewInternalServerError(err,
-			"Failed to create query for inserting a run metric: %+v", metric)
-	}
-	_, err = s.db.Exec(sql, args...)
-	if err != nil {
-		if s.db.IsDuplicateError(err) {
-			return util.NewAlreadyExistError(
-				"Failed to create a run metric. Same metric has been reported before: %s/%s", metric.NodeID, metric.Name)
-		}
-		return util.NewInternalServerError(err, "Failed to insert a run metric: %v", metric)
-	}
-	return nil
-}
-
 // Returns a new RunStore.
 func NewRunStore(db *DB, time util.TimeInterface) *RunStore {
 	return &RunStore{
-		db:                     db,
-		resourceReferenceStore: NewResourceReferenceStore(db, nil),
-		time:                   time,
+		db:   db,
+		time: time,
 	}
 }
 
@@ -744,52 +600,4 @@ func (s *RunStore) TerminateRun(runId string) error {
 		return util.NewInvalidInputError("Failed to terminate a run %s. Row not found", runId)
 	}
 	return nil
-}
-
-// Add a metric as a new field to the select clause by join the passed-in SQL query with run_metrics table.
-// With the metric as a field in the select clause enable sorting on this metric afterwards.
-// TODO(jingzhang36): example of resulting SQL query and explanation for it.
-func (s *RunStore) addSortByRunMetricToSelect(sqlBuilder sq.SelectBuilder, opts *list.Options) sq.SelectBuilder {
-	var r model.Run
-	if r.IsRegularField(opts.SortByFieldName) {
-		return sqlBuilder
-	}
-	// TODO(jingzhang36): address the case where runs doesn't have the specified metric.
-	return sq.
-		Select("selected_runs.*, run_metrics.numbervalue as "+opts.SortByFieldName).
-		FromSelect(sqlBuilder, "selected_runs").
-		LeftJoin("run_metrics ON selected_runs.uuid=run_metrics.runuuid AND run_metrics.name='" + opts.SortByFieldName + "'")
-}
-
-func (s *RunStore) scanRowsToRunMetrics(rows *sql.Rows) ([]*model.RunMetric, error) {
-	var metrics []*model.RunMetric
-	for rows.Next() {
-		var runId, nodeId, name, form, payload string
-		var val float64
-		err := rows.Scan(
-			&runId,
-			&nodeId,
-			&name,
-			&val,
-			&form,
-			&payload,
-		)
-		if err != nil {
-			glog.Errorf("Failed to scan row into a run metric: %v", err)
-			return metrics, nil
-		}
-
-		metrics = append(
-			metrics,
-			&model.RunMetric{
-				RunUUID:     runId,
-				NodeID:      nodeId,
-				Name:        name,
-				NumberValue: val,
-				Format:      form,
-				Payload:     model.LargeText(payload),
-			},
-		)
-	}
-	return metrics, nil
 }

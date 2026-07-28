@@ -71,9 +71,13 @@ WORKDIR /bin
 
 # Adding CA certificate so API server can download pipeline through URL and wget is used for liveness/readiness probe command
 RUN apt-get update && apt-get install -y ca-certificates wget
+RUN mkdir -p /opt/kfp/swagger
 
 COPY backend/src/apiserver/config/ /config
 COPY --from=builder /bin/apiserver /bin/apiserver
+
+# Copy Swagger specs for API documentation.
+COPY backend/api/v2beta1/swagger/kfp_api_single_file.swagger.json /opt/kfp/swagger/kfp_api_v2beta1.swagger.json
 
 COPY --from=compiler /samples/ /samples/
 RUN chmod +x /bin/apiserver

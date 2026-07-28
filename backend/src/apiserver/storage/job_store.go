@@ -48,7 +48,6 @@ var jobColumns = []string{
 	"PipelineName",
 	"PipelineSpecManifest",
 	"WorkflowSpecManifest",
-	"Parameters",
 	"Conditions",
 	"RuntimeParameters",
 	"PipelineRoot",
@@ -77,9 +76,8 @@ type JobStoreInterface interface {
 }
 
 type JobStore struct {
-	db                     *DB
-	resourceReferenceStore *ResourceReferenceStore
-	time                   util.TimeInterface
+	db   *DB
+	time util.TimeInterface
 }
 
 // Runs two SQL queries in a transaction to return a list of matching jobs, as well as their
@@ -166,9 +164,13 @@ func (s *JobStore) buildSelectJobsQuery(selectCount bool, opts *list.Options,
 	} else if refKey != nil && refKey.Type == model.NamespaceResourceType && (refKey.ID != "" || common.IsMultiUserMode()) {
 		filteredSelectBuilder, err = list.FilterOnNamespace("jobs", jobColumns,
 			selectCount, refKey.ID)
+	} else if refKey == nil || (refKey.ID == "" && !common.IsMultiUserMode()) {
+		filteredSelectBuilder = sq.Select(jobColumns...).From("jobs")
+		if selectCount {
+			filteredSelectBuilder = sq.Select("count(*)").From("jobs")
+		}
 	} else {
-		filteredSelectBuilder, err = list.FilterOnResourceReference("jobs", jobColumns,
-			model.JobResourceType, selectCount, filterContext)
+		return "", nil, util.NewInvalidInputError("Unsupported V2 recurring run reference filter: %s", refKey.Type)
 	}
 	if err != nil {
 		return "", nil, util.NewInternalServerError(err, "Failed to list jobs: %v", err)
@@ -179,7 +181,6 @@ func (s *JobStore) buildSelectJobsQuery(selectCount bool, opts *list.Options,
 	// to get resource reference information. Also add pagination.
 	if !selectCount {
 		sqlBuilder = opts.AddPaginationToSelect(sqlBuilder)
-		sqlBuilder = s.addResourceReferences(sqlBuilder)
 		sqlBuilder = opts.AddSortingToSelect(sqlBuilder)
 	}
 	sql, args, err := sqlBuilder.ToSql()
@@ -191,7 +192,7 @@ func (s *JobStore) buildSelectJobsQuery(selectCount bool, opts *list.Options,
 }
 
 func (s *JobStore) GetJob(id string) (*model.Job, error) {
-	sql, args, err := s.addResourceReferences(sq.Select(jobColumns...).From("jobs")).
+	sql, args, err := sq.Select(jobColumns...).From("jobs").
 		Where(sq.Eq{"uuid": id}).
 		Limit(1).
 		ToSql()
@@ -215,24 +216,14 @@ func (s *JobStore) GetJob(id string) (*model.Job, error) {
 	return jobs[0], nil
 }
 
-func (s *JobStore) addResourceReferences(filteredSelectBuilder sq.SelectBuilder) sq.SelectBuilder {
-	resourceRefConcatQuery := s.db.Concat([]string{`"["`, s.db.GroupConcat("r.Payload", ","), `"]"`}, "")
-	return sq.
-		Select("jobs.*", resourceRefConcatQuery+" AS refs").
-		FromSelect(filteredSelectBuilder, "jobs").
-		// Append all the resource references for the run as a json column
-		LeftJoin("(select * from resource_references where ResourceType='Job') AS r ON jobs.UUID=r.ResourceUUID").
-		GroupBy("jobs.UUID")
-}
-
 func (s *JobStore) scanRows(r *sql.Rows) ([]*model.Job, error) {
 	var jobs []*model.Job
 	for r.Next() {
 		var uuid, displayName, name, namespace, pipelineId, pipelineName, conditions, serviceAccount,
-			description, parameters, pipelineSpecManifest, workflowSpecManifest string
+			description, pipelineSpecManifest, workflowSpecManifest string
 		var cronScheduleStartTimeInSec, cronScheduleEndTimeInSec, createdAtInSec,
 			periodicScheduleStartTimeInSec, periodicScheduleEndTimeInSec, intervalSecond, updatedAtInSec sql.NullInt64
-		var cron, resourceReferencesInString, runtimeParameters, pipelineRoot sql.NullString
+		var cron, runtimeParameters, pipelineRoot sql.NullString
 		var experimentId, pipelineVersionId sql.NullString
 		var enabled, noCatchup bool
 		var maxConcurrency int64
@@ -241,29 +232,14 @@ func (s *JobStore) scanRows(r *sql.Rows) ([]*model.Job, error) {
 			&maxConcurrency, &noCatchup, &createdAtInSec, &updatedAtInSec, &enabled,
 			&cronScheduleStartTimeInSec, &cronScheduleEndTimeInSec, &cron,
 			&periodicScheduleStartTimeInSec, &periodicScheduleEndTimeInSec, &intervalSecond,
-			&pipelineId, &pipelineName, &pipelineSpecManifest, &workflowSpecManifest, &parameters,
+			&pipelineId, &pipelineName, &pipelineSpecManifest, &workflowSpecManifest,
 			&conditions, &runtimeParameters, &pipelineRoot, &experimentId,
-			&pipelineVersionId, &resourceReferencesInString)
+			&pipelineVersionId)
 		if err != nil {
 			return nil, err
 		}
-		resourceReferences, _ := parseResourceReferences(resourceReferencesInString)
 		expId := experimentId.String
 		pvId := pipelineVersionId.String
-		if len(resourceReferences) > 0 {
-			if expId == "" {
-				expId = model.GetRefIdFromResourceReferences(resourceReferences, model.ExperimentResourceType)
-			}
-			if namespace == "" {
-				namespace = model.GetRefIdFromResourceReferences(resourceReferences, model.NamespaceResourceType)
-			}
-			if pipelineId == "" {
-				pipelineId = model.GetRefIdFromResourceReferences(resourceReferences, model.PipelineResourceType)
-			}
-			if pvId == "" {
-				pvId = model.GetRefIdFromResourceReferences(resourceReferences, model.PipelineVersionResourceType)
-			}
-		}
 		runtimeConfig := parseRuntimeConfig(runtimeParameters, pipelineRoot)
 		job := &model.Job{
 			UUID:           uuid,
@@ -296,7 +272,6 @@ func (s *JobStore) scanRows(r *sql.Rows) ([]*model.Job, error) {
 				PipelineName:         pipelineName,
 				PipelineSpecManifest: model.LargeText(pipelineSpecManifest),
 				WorkflowSpecManifest: model.LargeText(workflowSpecManifest),
-				Parameters:           model.LargeText(parameters),
 				RuntimeConfig:        runtimeConfig,
 			},
 			CreatedAtInSec: createdAtInSec.Int64,
@@ -324,11 +299,6 @@ func (s *JobStore) DeleteJob(id string) error {
 		tx.Rollback()
 		return util.NewInternalServerError(err, "Failed to delete job %s from table", id)
 	}
-	err = s.resourceReferenceStore.DeleteResourceReferences(tx, id, model.JobResourceType)
-	if err != nil {
-		tx.Rollback()
-		return util.NewInternalServerError(err, "Failed to delete resource references from table for job %v ", id)
-	}
 	err = tx.Commit()
 	if err != nil {
 		tx.Rollback()
@@ -339,7 +309,7 @@ func (s *JobStore) DeleteJob(id string) error {
 
 func (s *JobStore) CreateJob(j *model.Job) (*model.Job, error) {
 	// Add creation/update time.
-	j = j.ToV1().ToV2()
+	j = j.ToV2()
 	now := s.time.Now().Unix()
 	j.CreatedAtInSec = now
 	j.UpdatedAtInSec = now
@@ -369,7 +339,6 @@ func (s *JobStore) CreateJob(j *model.Job) (*model.Job, error) {
 			"PipelineName":                   j.PipelineSpec.PipelineName,
 			"PipelineSpecManifest":           j.PipelineSpec.PipelineSpecManifest,
 			"WorkflowSpecManifest":           j.PipelineSpec.WorkflowSpecManifest,
-			"Parameters":                     j.PipelineSpec.Parameters,
 			"RuntimeParameters":              j.PipelineSpec.RuntimeConfig.Parameters,
 			"PipelineRoot":                   j.PipelineSpec.RuntimeConfig.PipelineRoot,
 			"ExperimentUUID":                 j.ExperimentId,
@@ -389,14 +358,6 @@ func (s *JobStore) CreateJob(j *model.Job) (*model.Job, error) {
 	if err != nil {
 		tx.Rollback()
 		return nil, util.NewInternalServerError(err, "Failed to store job %v to table", j.DisplayName)
-	}
-
-	// TODO(gkcalat): remove this workflow once we fully deprecate resource references
-	// and provide logic for data migration for v1beta1 data.
-	err = s.resourceReferenceStore.CreateResourceReferences(tx, j.ResourceReferences)
-	if err != nil {
-		tx.Rollback()
-		return nil, util.NewInternalServerError(err, "Failed to store resource references to table for job %v ", j.DisplayName)
 	}
 
 	err = tx.Commit()
@@ -453,9 +414,7 @@ func (s *JobStore) UpdateJob(swf *util.ScheduledWorkflow) error {
 			"IntervalSecond":                 swf.IntervalSecondOr0(),
 		})
 	if len(parameters) > 0 {
-		if swf.GetVersion() == util.SWFv1 {
-			updateSql = updateSql.SetMap(sq.Eq{"Parameters": parameters})
-		} else if swf.GetVersion() == util.SWFv2 {
+		if swf.GetVersion() == util.SWFv2 {
 			updateSql = updateSql.SetMap(sq.Eq{"RuntimeParameters": parameters})
 		} else {
 			return util.NewInternalServerError(util.NewInvalidInputError("ScheduledWorkflow has an invalid version: %v", swf.GetVersion()), "Failed to update job %v", swf.UID)
@@ -493,8 +452,7 @@ func (s *JobStore) UpdateJob(swf *util.ScheduledWorkflow) error {
 // and pipeline versions.
 func NewJobStore(db *DB, time util.TimeInterface, pipelineStore PipelineStoreInterface) *JobStore {
 	return &JobStore{
-		db:                     db,
-		resourceReferenceStore: NewResourceReferenceStore(db, pipelineStore),
-		time:                   time,
+		db:   db,
+		time: time,
 	}
 }

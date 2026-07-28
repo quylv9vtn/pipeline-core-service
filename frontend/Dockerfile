@@ -10,11 +10,17 @@ ARG DATE
 
 WORKDIR ./src
 
-COPY . .
+COPY frontend/package*.json ./frontend/
+COPY frontend/server/package*.json ./frontend/server/
+COPY frontend/mock-backend/package*.json ./frontend/mock-backend/
 
 WORKDIR ./frontend
 
 RUN npm ci && npm run postinstall
+
+WORKDIR /src
+COPY . .
+WORKDIR ./frontend
 RUN npm run build
 
 RUN mkdir -p ./server/dist && \

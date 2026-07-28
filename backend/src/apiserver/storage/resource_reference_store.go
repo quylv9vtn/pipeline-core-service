@@ -43,7 +43,7 @@ type ResourceReferenceStore struct {
 
 // Create a resource reference.
 // This is always in company with creating a parent resource so a transaction is needed as input.
-func (s *ResourceReferenceStore) CreateResourceReferences(tx *sql.Tx, refs []*model.ResourceReference) error {
+func (s *ResourceReferenceStore) CreateResourceReferences(tx *Tx, refs []*model.ResourceReference) error {
 	if len(refs) > 0 {
 		resourceRefSqlBuilder := sq.
 			Insert("resource_references").
@@ -71,7 +71,7 @@ func (s *ResourceReferenceStore) CreateResourceReferences(tx *sql.Tx, refs []*mo
 	return nil
 }
 
-func (s *ResourceReferenceStore) checkReferenceExist(tx *sql.Tx, referenceId string, referenceType model.ResourceType) bool {
+func (s *ResourceReferenceStore) checkReferenceExist(tx *Tx, referenceId string, referenceType model.ResourceType) bool {
 	var selectBuilder sq.SelectBuilder
 	switch referenceType {
 	case model.JobResourceType:
@@ -113,7 +113,7 @@ func (s *ResourceReferenceStore) checkReferenceExist(tx *sql.Tx, referenceId str
 
 // Delete all resource references for a specific resource.
 // This is always in company with creating a parent resource so a transaction is needed as input.
-func (s *ResourceReferenceStore) DeleteResourceReferences(tx *sql.Tx, id string, resourceType model.ResourceType) error {
+func (s *ResourceReferenceStore) DeleteResourceReferences(tx *Tx, id string, resourceType model.ResourceType) error {
 	refSql, refArgs, err := sq.
 		Delete("resource_references").
 		Where(sq.Or{

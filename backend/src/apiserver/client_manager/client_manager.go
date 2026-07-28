@@ -101,7 +101,6 @@ type ClientManager struct {
 	jobStore                  storage.JobStoreInterface
 	runStore                  storage.RunStoreInterface
 	taskStore                 storage.TaskStoreInterface
-	resourceReferenceStore    storage.ResourceReferenceStoreInterface
 	dBStatusStore             storage.DBStatusStoreInterface
 	defaultExperimentStore    storage.DefaultExperimentStoreInterface
 	objectStore               storage.ObjectStore
@@ -152,10 +151,6 @@ func (c *ClientManager) JobStore() storage.JobStoreInterface {
 
 func (c *ClientManager) RunStore() storage.RunStoreInterface {
 	return c.runStore
-}
-
-func (c *ClientManager) ResourceReferenceStore() storage.ResourceReferenceStoreInterface {
-	return c.resourceReferenceStore
 }
 
 func (c *ClientManager) DBStatusStore() storage.DBStatusStoreInterface {
@@ -285,7 +280,6 @@ func (c *ClientManager) init(options *Options) error {
 	c.experimentStore = storage.NewExperimentStore(db, c.time, c.uuid)
 	c.jobStore = storage.NewJobStore(db, c.time, pipelineStoreForRef)
 	c.taskStore = storage.NewTaskStore(db, c.time, c.uuid)
-	c.resourceReferenceStore = storage.NewResourceReferenceStore(db, pipelineStoreForRef)
 	c.dBStatusStore = storage.NewDBStatusStore(db)
 	c.defaultExperimentStore = storage.NewDefaultExperimentStore(db)
 
@@ -375,6 +369,9 @@ func InitDBClient(initConnectionTimeout time.Duration) *storage.DB {
 	newdb, err := db.DB()
 	if err != nil {
 		glog.Fatalf("Failed to retrieve *sql.DB from gorm.DB. Error: %v", err)
+	}
+	if driverName == "pgx" {
+		return storage.NewDB(newdb, storage.NewPostgreSQLDialect())
 	}
 	return storage.NewDB(newdb, storage.NewMySQLDialect())
 }
@@ -577,14 +574,89 @@ func autoMigrate(db *gorm.DB) error {
 		&model.PipelineVersion{},
 		&model.Job{},
 		&model.Run{},
-		&model.RunMetric{},
 		&model.Task{},
-		&model.ResourceReference{},
 	); err != nil {
 		return fmt.Errorf("AutoMigrate failed: %w", err)
 	}
 
+	return pruneV1Schema(db)
+}
+
+// pruneV1Schema removes storage that is only used by the disabled v1beta1 API.
+// All relationships required by V2 are represented by direct columns on the
+// run, recurring-run, experiment, pipeline, and pipeline-version tables.
+func pruneV1Schema(db *gorm.DB) error {
+	migrator := db.Migrator()
+
+	for _, table := range []string{"run_metrics", "resource_references"} {
+		if migrator.HasTable(table) {
+			glog.Infof("Dropping V1-only table %s", table)
+			if err := migrator.DropTable(table); err != nil {
+				return fmt.Errorf("failed to drop V1-only table %s: %w", table, err)
+			}
+		}
+	}
+
+	legacyColumns := map[string][]string{
+		"pipelines":         {"DefaultVersionId", "Parameters"},
+		"pipeline_versions": {"Parameters"},
+		"run_details":       {"Parameters"},
+		"jobs":              {"Parameters"},
+	}
+	for table, columns := range legacyColumns {
+		for _, column := range columns {
+			hasColumn, err := hasExactColumn(db, table, column)
+			if err != nil {
+				return fmt.Errorf("failed to inspect column %s.%s: %w", table, column, err)
+			}
+			if hasColumn {
+				glog.Infof("Dropping unused V1 column %s.%s", table, column)
+				// Use explicit DDL here instead of GORM's SQLite DropColumn
+				// implementation. The latter recreates the table and can panic for
+				// legacy schemas that were not created from a registered GORM model.
+				var statement string
+				switch db.Dialector.Name() {
+				case "mysql":
+					statement = fmt.Sprintf("ALTER TABLE `%s` DROP COLUMN `%s`", table, column)
+				default:
+					statement = fmt.Sprintf(`ALTER TABLE "%s" DROP COLUMN "%s"`, table, column)
+				}
+				if err := db.Exec(statement).Error; err != nil {
+					return fmt.Errorf("failed to drop unused V1 column %s.%s: %w", table, column, err)
+				}
+			}
+		}
+	}
+	if db.Dialector.Name() == "postgres" {
+		// PostgreSQL identifiers are case-sensitive when quoted. The initial
+		// PostgreSQL port created these duplicates alongside the lower-case
+		// columns now used by the stores, so target the quoted spellings exactly.
+		for _, statement := range []string{
+			`ALTER TABLE db_statuses DROP COLUMN IF EXISTS "HaveSamplesLoaded"`,
+			`ALTER TABLE default_experiments DROP COLUMN IF EXISTS "DefaultExperimentId"`,
+		} {
+			if err := db.Exec(statement).Error; err != nil {
+				return fmt.Errorf("failed to remove duplicate PostgreSQL column: %w", err)
+			}
+		}
+	}
 	return nil
+}
+
+// hasExactColumn avoids GORM's SQLite HasColumn implementation, which uses a
+// LIKE query and can incorrectly report Parameters when only RuntimeParameters
+// exists. Case-insensitive equality still supports unquoted legacy schemas.
+func hasExactColumn(db *gorm.DB, table, column string) (bool, error) {
+	columnTypes, err := db.Migrator().ColumnTypes(table)
+	if err != nil {
+		return false, err
+	}
+	for _, columnType := range columnTypes {
+		if strings.EqualFold(columnType.Name(), column) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // getColumnLength returns the declared length for a column using GORM ColumnTypes.

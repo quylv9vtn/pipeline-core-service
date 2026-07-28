@@ -31,7 +31,6 @@ type FakeClientManager struct {
 	jobStore                      storage.JobStoreInterface
 	runStore                      storage.RunStoreInterface
 	taskStore                     storage.TaskStoreInterface
-	resourceReferenceStore        storage.ResourceReferenceStoreInterface
 	dBStatusStore                 storage.DBStatusStoreInterface
 	defaultExperimentStore        storage.DefaultExperimentStoreInterface
 	objectStore                   storage.ObjectStore
@@ -72,7 +71,6 @@ func NewFakeClientManager(time util.TimeInterface, uuid util.UUIDGeneratorInterf
 		runStore:                      storage.NewRunStore(db, time),
 		taskStore:                     storage.NewTaskStore(db, time, uuid),
 		ExecClientFake:                client.NewFakeExecClient(),
-		resourceReferenceStore:        storage.NewResourceReferenceStore(db, nil),
 		dBStatusStore:                 storage.NewDBStatusStore(db),
 		defaultExperimentStore:        storage.NewDefaultExperimentStore(db),
 		objectStore:                   newFakeObjectStore(),
@@ -152,10 +150,6 @@ func (f *FakeClientManager) RunStore() storage.RunStoreInterface {
 
 func (f *FakeClientManager) TaskStore() storage.TaskStoreInterface {
 	return f.taskStore
-}
-
-func (f *FakeClientManager) ResourceReferenceStore() storage.ResourceReferenceStoreInterface {
-	return f.resourceReferenceStore
 }
 
 func (f *FakeClientManager) DBStatusStore() storage.DBStatusStoreInterface {

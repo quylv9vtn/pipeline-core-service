@@ -512,7 +512,7 @@ export default class Buttons {
         selectedIds.length === 1 ? 'this Pipeline' : 'these Pipelines'
       }? This action cannot be undone.`,
       useCurrentResource,
-      id => Apis.pipelineServiceApi.deletePipeline(id),
+      id => Apis.pipelineServiceApiV2.deletePipeline(id, true),
       callback,
       'Delete',
       'pipeline',
@@ -585,7 +585,7 @@ export default class Buttons {
       ids,
       'Do you want to delete the selected runs? This action cannot be undone.',
       useCurrentResource,
-      id => Apis.runServiceApi.deleteRun(id),
+      id => Apis.runServiceApiV2.deleteRun(id),
       callback,
       'Delete',
       'run',

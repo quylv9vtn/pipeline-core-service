@@ -102,7 +102,6 @@ type ClientManagerInterface interface {
 	JobStore() storage.JobStoreInterface
 	RunStore() storage.RunStoreInterface
 	TaskStore() storage.TaskStoreInterface
-	ResourceReferenceStore() storage.ResourceReferenceStoreInterface
 	DBStatusStore() storage.DBStatusStoreInterface
 	DefaultExperimentStore() storage.DefaultExperimentStoreInterface
 	ObjectStore() storage.ObjectStore
@@ -133,7 +132,6 @@ type ResourceManager struct {
 	jobStore                  storage.JobStoreInterface
 	runStore                  storage.RunStoreInterface
 	taskStore                 storage.TaskStoreInterface
-	resourceReferenceStore    storage.ResourceReferenceStoreInterface
 	dBStatusStore             storage.DBStatusStoreInterface
 	defaultExperimentStore    storage.DefaultExperimentStoreInterface
 	objectStore               storage.ObjectStore
@@ -156,7 +154,6 @@ func NewResourceManager(clientManager ClientManagerInterface, options *ResourceM
 		jobStore:                  clientManager.JobStore(),
 		runStore:                  clientManager.RunStore(),
 		taskStore:                 clientManager.TaskStore(),
-		resourceReferenceStore:    clientManager.ResourceReferenceStore(),
 		dBStatusStore:             clientManager.DBStatusStore(),
 		defaultExperimentStore:    clientManager.DefaultExperimentStore(),
 		objectStore:               clientManager.ObjectStore(),
@@ -771,14 +768,6 @@ func (r *ResourceManager) UnarchiveRun(runId string) error {
 	if err != nil {
 		return util.Wrapf(err, "Failed to unarchive run %v as it does not exist", runId)
 	}
-	if run.ExperimentId == "" {
-		experimentRef, err := r.resourceReferenceStore.GetResourceReference(runId, model.RunResourceType, model.ExperimentResourceType)
-		if err != nil {
-			return util.Wrapf(err, "Failed to unarchive run %v due to resource references fetching error", runId)
-		}
-		run.ExperimentId = experimentRef.ReferenceUUID
-	}
-
 	experiment, err := r.GetExperiment(run.ExperimentId)
 	if err != nil {
 		return util.Wrapf(err, "Failed to unarchive run %v due to experiment fetching error", runId)
@@ -1429,19 +1418,6 @@ func (r *ResourceManager) ReportWorkflowResource(ctx context.Context, execSpec u
 		pipelineSpec := existingJob.PipelineSpec
 		pipelineSpec.WorkflowSpecManifest = model.LargeText(execSpec.GetExecutionSpec().ToStringForStore())
 
-		// Try to fetch experiment id from resource references if it is missing.
-		if experimentId == "" {
-			experimentRef, err := r.resourceReferenceStore.GetResourceReference(jobId, model.JobResourceType, model.ExperimentResourceType)
-			if err != nil {
-				return nil, util.Wrapf(err, "Failed to retrieve the experiment ID for the job %v that created the run", jobId)
-			}
-			experimentId = experimentRef.ReferenceUUID
-			if namespace == "" {
-				if namespaceRef, err := r.resourceReferenceStore.GetResourceReference(jobId, model.JobResourceType, model.NamespaceResourceType); err == nil {
-					namespace = namespaceRef.ReferenceUUID
-				}
-			}
-		}
 		if experimentId == "" {
 			experimentId, err = r.GetDefaultExperimentId()
 			if err != nil {
@@ -1681,17 +1657,6 @@ func (r *ResourceManager) CreateDefaultExperiment(namespace string) (string, err
 
 	glog.Infof("Default experiment is set. ID is: %v", defaultExperiment.UUID)
 	return defaultExperiment.UUID, nil
-}
-
-// TODO(gkcalat): deprecate this as we no longer have metrics in the v2beta1 run message.
-// Read metrics as ordinary artifacts instead.
-// Creates a run metric entry.
-func (r *ResourceManager) ReportMetric(metric *model.RunMetric) error {
-	err := r.runStore.CreateMetric(metric)
-	if err != nil {
-		return util.Wrap(err, "Failed to report a run metric")
-	}
-	return nil
 }
 
 // ResolveArtifactPath resolves the object storage path for an artifact.
@@ -2028,19 +1993,11 @@ func (r *ResourceManager) GetNamespaceFromExperimentId(experimentId string) (str
 	if err != nil {
 		return "", util.Wrapf(err, "Failed to fetch namespace from experiment %v", experimentId)
 	}
-	if experiment.Namespace == "" {
-		if common.IsMultiUserMode() {
-			namespaceRef, err := r.resourceReferenceStore.GetResourceReference(experimentId, model.ExperimentResourceType, model.NamespaceResourceType)
-			if err != nil {
-				return "", util.Wrapf(err, "Failed to fetch namespace from experiment %v due to resource references fetching error", experimentId)
-			}
-			if namespaceRef == nil || namespaceRef.ReferenceUUID == "" {
-				return "", util.NewInternalServerError(util.NewNotFoundError(errors.New("Namespace is empty"), "Experiment's namespace was not found"), "Failed to fetch a namespace for experiment %v in multi-user mode", experimentId)
-			}
-			experiment.Namespace = namespaceRef.ReferenceUUID
-		} else {
-			experiment.Namespace = ""
-		}
+	if experiment.Namespace == "" && common.IsMultiUserMode() {
+		return "", util.NewInternalServerError(
+			util.NewNotFoundError(errors.New("Namespace is empty"), "Experiment's namespace was not found"),
+			"Failed to fetch a namespace for experiment %v in multi-user mode", experimentId,
+		)
 	}
 	return experiment.Namespace, nil
 }

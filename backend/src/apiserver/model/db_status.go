@@ -15,5 +15,5 @@
 package model
 
 type DBStatus struct {
-	HaveSamplesLoaded bool `gorm:"column:HaveSamplesLoaded; not null; primaryKey;"`
+	HaveSamplesLoaded bool `gorm:"column:havesamplesloaded; not null; primaryKey;"`
 }

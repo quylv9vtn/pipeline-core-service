@@ -7,6 +7,16 @@ resources:
 - ../../../cache-deployer
 - pipeline-install-config.yaml
 - postgres-secret-extended.yaml
+patches:
+# The cache server only supports MySQL. Disable the legacy cache webhook for
+# PostgreSQL installs instead of leaving both cache deployments crash-looping.
+- target:
+    kind: Deployment
+    name: cache-server|cache-deployer-deployment
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 0
 vars:
 - fieldref:
     fieldPath: metadata.namespace

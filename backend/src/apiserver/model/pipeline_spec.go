@@ -42,7 +42,7 @@ type PipelineSpec struct {
 	// At most one of the fields `Parameters` and `RuntimeConfig` can be non-empty
 	// This string stores an array of map[string]value. For example:
 	//  {"param1": Value1} will be stored as [{"name": "param1", "value":"value1"}].
-	Parameters LargeText `gorm:"column:Parameters;"`
+	Parameters LargeText `gorm:"-"`
 
 	// Runtime config of the pipeline, only used for v2 template in API v1beta1 API.
 	RuntimeConfig

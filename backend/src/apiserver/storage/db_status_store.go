@@ -20,7 +20,7 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/common/util"
 )
 
-var defaultDBStatus = sq.Eq{"HaveSamplesLoaded": false}
+var defaultDBStatus = sq.Eq{"havesamplesloaded": false}
 
 type DBStatusStoreInterface interface {
 	HaveSamplesLoaded() (bool, error)
@@ -28,7 +28,7 @@ type DBStatusStoreInterface interface {
 }
 
 var dbStatusStoreColumns = []string{
-	"HaveSamplesLoaded",
+	"havesamplesloaded",
 }
 
 // Implementation of a DBStatusStoreInterface. This store read/write state of the database.
@@ -108,7 +108,7 @@ func (s *DBStatusStore) HaveSamplesLoaded() (bool, error) {
 func (s *DBStatusStore) MarkSampleLoaded() error {
 	sql, args, err := sq.
 		Update("db_statuses").
-		SetMap(sq.Eq{"HaveSamplesLoaded": true}).
+		SetMap(sq.Eq{"havesamplesloaded": true}).
 		ToSql()
 	if err != nil {
 		return util.NewInternalServerError(err, "Error creating query to mark samples as loaded")

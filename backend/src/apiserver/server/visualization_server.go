@@ -23,10 +23,9 @@ import (
 	"net/url"
 	"strings"
 
-	apiv1beta1 "github.com/kubeflow/pipelines/backend/api/v1beta1/go_client"
+	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 
 	"github.com/golang/glog"
-	"github.com/kubeflow/pipelines/backend/api/v1beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/common"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/resource"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
@@ -42,10 +41,10 @@ const (
 type VisualizationServer struct {
 	resourceManager *resource.ResourceManager
 	serviceURL      string
-	apiv1beta1.UnimplementedVisualizationServiceServer
+	apiv2beta1.UnimplementedVisualizationServiceServer
 }
 
-func (s *VisualizationServer) CreateVisualizationV1(ctx context.Context, request *go_client.CreateVisualizationRequest) (*go_client.Visualization, error) {
+func (s *VisualizationServer) CreateVisualizationV1(ctx context.Context, request *apiv2beta1.CreateVisualizationRequest) (*apiv2beta1.Visualization, error) {
 	if err := s.validateCreateVisualizationRequest(request); err != nil {
 		return nil, err
 	}
@@ -80,9 +79,9 @@ func (s *VisualizationServer) CreateVisualizationV1(ctx context.Context, request
 // object has valid values.
 // It returns an error if a go_client.Visualization object does not have valid
 // values.
-func (s *VisualizationServer) validateCreateVisualizationRequest(request *go_client.CreateVisualizationRequest) error {
+func (s *VisualizationServer) validateCreateVisualizationRequest(request *apiv2beta1.CreateVisualizationRequest) error {
 	// Only validate that a source is provided for non-custom visualizations.
-	if request.Visualization.Type != go_client.Visualization_CUSTOM {
+	if request.Visualization.Type != apiv2beta1.Visualization_CUSTOM {
 		if len(request.Visualization.Source) == 0 {
 			return util.NewInvalidInputError("A visualization requires a Source to be provided. Received %s", request.Visualization.Source)
 		}
@@ -104,12 +103,12 @@ func (s *VisualizationServer) validateCreateVisualizationRequest(request *go_cli
 // generateVisualizationFromRequest communicates with the python visualization
 // service to generate HTML visualizations from a request.
 // It returns the generated HTML as a string and any error that is encountered.
-func (s *VisualizationServer) generateVisualizationFromRequest(request *go_client.CreateVisualizationRequest) ([]byte, error) {
+func (s *VisualizationServer) generateVisualizationFromRequest(request *apiv2beta1.CreateVisualizationRequest) ([]byte, error) {
 	serviceURL := s.getVisualizationServiceURL(request)
 	if err := isVisualizationServiceAlive(serviceURL); err != nil {
 		return nil, util.Wrap(err, "Cannot generate visualization")
 	}
-	visualizationType := strings.ToLower(go_client.Visualization_Type_name[int32(request.Visualization.Type)])
+	visualizationType := strings.ToLower(apiv2beta1.Visualization_Type_name[int32(request.Visualization.Type)])
 	urlValues := url.Values{
 		"arguments": {request.Visualization.Arguments},
 		"source":    {request.Visualization.Source},
@@ -130,7 +129,7 @@ func (s *VisualizationServer) generateVisualizationFromRequest(request *go_clien
 	return body, nil
 }
 
-func (s *VisualizationServer) getVisualizationServiceURL(request *go_client.CreateVisualizationRequest) string {
+func (s *VisualizationServer) getVisualizationServiceURL(request *apiv2beta1.CreateVisualizationRequest) string {
 	if common.IsMultiUserMode() && len(request.Namespace) > 0 {
 		return fmt.Sprintf("http://%s.%s:%s",
 			common.GetStringConfig(visualizationServiceName),

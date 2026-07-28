@@ -150,18 +150,6 @@ spec:
                   name: pipeline-install-config
                   key: defaultSecurityContextRunAsNonRoot
                   optional: true
-            - name: BLOCK_V1_PIPELINES
-              valueFrom:
-                configMapKeyRef:
-                  name: pipeline-install-config
-                  key: BLOCK_V1_PIPELINES
-                  optional: true
-            - name: V1_ALLOWED_NAMESPACES
-              valueFrom:
-                configMapKeyRef:
-                  name: pipeline-install-config
-                  key: V1_ALLOWED_NAMESPACES
-                  optional: true
           image: ghcr.io/kubeflow/kfp-api-server:dummy
           imagePullPolicy: IfNotPresent
           name: ml-pipeline-api-server
@@ -172,14 +160,14 @@ spec:
               containerPort: 8887
           readinessProbe:
             httpGet:
-              path: /apis/v1beta1/healthz
+              path: /apis/v2beta1/healthz
               port: 8888
             initialDelaySeconds: 3
             periodSeconds: 5
             timeoutSeconds: 2
           livenessProbe:
             httpGet:
-              path: /apis/v1beta1/healthz
+              path: /apis/v2beta1/healthz
               port: 8888
             initialDelaySeconds: 3
             periodSeconds: 5
@@ -189,7 +177,7 @@ spec:
           # migration.
           startupProbe:
             httpGet:
-              path: /apis/v1beta1/healthz
+              path: /apis/v2beta1/healthz
               port: 8888
             failureThreshold: 12
             periodSeconds: 5

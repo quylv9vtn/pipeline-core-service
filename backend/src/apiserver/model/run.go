@@ -222,7 +222,7 @@ type Run struct {
 
 	StorageState   StorageState `gorm:"column:StorageState; not null;"`
 	ServiceAccount string       `gorm:"column:ServiceAccount; not null;"`
-	Metrics        []*RunMetric `gorm:"foreignKey:RunUUID;references:UUID;constraint:run_metrics_RunUUID_run_details_UUID_foreign,OnDelete:CASCADE,OnUpdate:CASCADE"` // This 'has-many' relation replaces the legacy AddForeignKey constraint previously defined in client_manager.go
+	Metrics        []*RunMetric `gorm:"-"` // V2 metrics are stored as MLMD artifacts.
 
 	// ResourceReferences are deprecated. Use Namespace, ExperimentId,
 	// RecurringRunId, PipelineSpec.PipelineId, PipelineSpec.PipelineVersionId
@@ -400,9 +400,6 @@ func (r *Run) GetField(name string) (string, bool) {
 	if field, ok := runAPIToModelFieldMap[name]; ok {
 		return field, true
 	}
-	if strings.HasPrefix(name, "metric:") {
-		return name[7:], true
-	}
 	return "", false
 }
 
@@ -438,18 +435,10 @@ func (r *Run) GetFieldValue(name string) interface{} {
 	case "RecurringRunId":
 		return r.RecurringRunId
 	}
-	// Second, try to find the match of "name" inside an array typed field
-	for _, metric := range r.Metrics {
-		if metric.Name == name {
-			return metric.NumberValue
-		}
-	}
 	return nil
 }
 
 // Regular fields are the fields that are mapped to columns in Run table.
-// Non-regular fields are the run metrics for now. Could have other non-regular
-// sorting fields later.
 func (r *Run) IsRegularField(name string) bool {
 	for _, field := range runAPIToModelFieldMap {
 		if field == name {

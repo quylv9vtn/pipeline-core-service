@@ -53,16 +53,17 @@ const (
 
 var (
 	// inputs
-	driverType        = flag.String(driverTypeArg, "", "task driver type, one of ROOT_DAG, DAG, CONTAINER")
-	pipelineName      = flag.String("pipeline_name", "", "pipeline context name")
-	runID             = flag.String("run_id", "", "pipeline run uid")
-	runName           = flag.String("run_name", "", "pipeline run name (Kubernetes object name)")
-	runDisplayName    = flag.String("run_display_name", "", "pipeline run display name")
-	componentSpecJson = flag.String("component", "{}", "component spec")
-	taskSpecJson      = flag.String("task", "", "task spec")
-	runtimeConfigJson = flag.String("runtime_config", "", "jobruntime config")
-	iterationIndex    = flag.Int("iteration_index", -1, "iteration index, -1 means not an interation")
-	taskName          = flag.String("task_name", "", "original task name, used for proper input resolution in the container/dag driver")
+	driverType               = flag.String(driverTypeArg, "", "task driver type, one of ROOT_DAG, DAG, CONTAINER")
+	pipelineName             = flag.String("pipeline_name", "", "pipeline context name")
+	runID                    = flag.String("run_id", "", "pipeline run uid")
+	runName                  = flag.String("run_name", "", "pipeline run name (Kubernetes object name)")
+	runDisplayName           = flag.String("run_display_name", "", "pipeline run display name")
+	pipelineJobCreateTimeUTC = flag.String("pipeline_job_create_time_utc", "", "pipeline job creation time in UTC")
+	componentSpecJson        = flag.String("component", "{}", "component spec")
+	taskSpecJson             = flag.String("task", "", "task spec")
+	runtimeConfigJson        = flag.String("runtime_config", "", "jobruntime config")
+	iterationIndex           = flag.Int("iteration_index", -1, "iteration index, -1 means not an interation")
+	taskName                 = flag.String("task_name", "", "original task name, used for proper input resolution in the container/dag driver")
 
 	// container inputs
 	dagExecutionID    = flag.Int64("dag_execution_id", 0, "DAG execution ID")
@@ -213,27 +214,28 @@ func drive() (err error) {
 		return err
 	}
 	options := driver.Options{
-		PipelineName:            *pipelineName,
-		RunID:                   *runID,
-		RunName:                 *runName,
-		RunDisplayName:          *runDisplayName,
-		Namespace:               namespace,
-		Component:               componentSpec,
-		Task:                    taskSpec,
-		DAGExecutionID:          *dagExecutionID,
-		IterationIndex:          *iterationIndex,
-		PipelineLogLevel:        *logLevel,
-		PublishLogs:             *publishLogs,
-		CacheDisabled:           *cacheDisabledFlag,
-		DriverType:              *driverType,
-		TaskName:                *taskName,
-		MLPipelineServerAddress: *mlPipelineServerAddress,
-		MLPipelineServerPort:    *mlPipelineServerPort,
-		MLMDServerAddress:       *mlmdServerAddress,
-		MLMDServerPort:          *mlmdServerPort,
-		MLPipelineTLSEnabled:    *mlPipelineTLSEnabled,
-		MLMDTLSEnabled:          *metadataTLSEnabled,
-		CaCertPath:              *caCertPath,
+		PipelineName:             *pipelineName,
+		RunID:                    *runID,
+		RunName:                  *runName,
+		RunDisplayName:           *runDisplayName,
+		PipelineJobCreateTimeUTC: *pipelineJobCreateTimeUTC,
+		Namespace:                namespace,
+		Component:                componentSpec,
+		Task:                     taskSpec,
+		DAGExecutionID:           *dagExecutionID,
+		IterationIndex:           *iterationIndex,
+		PipelineLogLevel:         *logLevel,
+		PublishLogs:              *publishLogs,
+		CacheDisabled:            *cacheDisabledFlag,
+		DriverType:               *driverType,
+		TaskName:                 *taskName,
+		MLPipelineServerAddress:  *mlPipelineServerAddress,
+		MLPipelineServerPort:     *mlPipelineServerPort,
+		MLMDServerAddress:        *mlmdServerAddress,
+		MLMDServerPort:           *mlmdServerPort,
+		MLPipelineTLSEnabled:     *mlPipelineTLSEnabled,
+		MLMDTLSEnabled:           *metadataTLSEnabled,
+		CaCertPath:               *caCertPath,
 	}
 	var execution *driver.Execution
 	var driverErr error
