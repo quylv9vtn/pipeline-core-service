@@ -367,6 +367,9 @@ func InitDBClient(initConnectionTimeout time.Duration) *storage.DB {
 	} else {
 		// Non-legacy schema (>=2.15): run autoMigrate for both first-time installs and
 		// upgrades between >=2.15 versions.
+		if err := renameQuotaColumns(db, dialect); err != nil {
+			glog.Fatalf("failed to rename quota columns: %v", err)
+		}
 		util.TerminateIfError(autoMigrate(db))
 	}
 
@@ -541,6 +544,12 @@ func runLegacyUpgradeFlow(db *gorm.DB, dialect SQLDialect) error {
 				return fmt.Errorf("failed to add DisplayName column to the %s table: %w", model.PipelineVersion{}.TableName(), err)
 			}
 		}
+	}
+
+	// Step 5-3: Rename quota columns from GiB/integer units to milli/MiB units.
+	// This is idempotent: only renames when the old column name is present.
+	if err := renameQuotaColumns(db, dialect); err != nil {
+		return fmt.Errorf("failed to rename quota columns: %w", err)
 	}
 
 	// Step 6: Run autoMigrate to add any missing FKs/constraints/columns/indexes and
@@ -1072,6 +1081,56 @@ func addDisplayNameColumn(db *gorm.DB, mdl interface{}, dialect SQLDialect) erro
 		}
 		return nil
 	})
+}
+
+// renameQuotaColumns renames quota table columns from the old GiB/integer units
+// to the new milli/MiB units. Idempotent: only runs when the old column is present.
+//
+//	quota_limits:       CPULimit→CPUMilliLimit, MemoryLimitGiB→MemoryMiBLimit,
+//	                    CPUUsed→CPUMilliUsed,   MemoryUsedGiB→MemoryMiBUsed
+//	quota_allocations:  CPU→CPUMilli,           MemoryGiB→MemoryMiB
+func renameQuotaColumns(db *gorm.DB, dialect SQLDialect) error {
+	type colRename struct {
+		table   string
+		oldName string
+		newName string
+	}
+	renames := []colRename{
+		{"quota_limits", "CPULimit", "CPUMilliLimit"},
+		{"quota_limits", "MemoryLimitGiB", "MemoryMiBLimit"},
+		{"quota_limits", "CPUUsed", "CPUMilliUsed"},
+		{"quota_limits", "MemoryUsedGiB", "MemoryMiBUsed"},
+		{"quota_allocations", "CPU", "CPUMilli"},
+		{"quota_allocations", "MemoryGiB", "MemoryMiB"},
+	}
+	q := dialect.QuoteIdentifier
+	for _, r := range renames {
+		if !db.Migrator().HasTable(r.table) {
+			continue
+		}
+		hasOld, err := hasExactColumn(db, r.table, r.oldName)
+		if err != nil {
+			return fmt.Errorf("check column %s.%s: %w", r.table, r.oldName, err)
+		}
+		if !hasOld {
+			continue
+		}
+		glog.Infof("Renaming quota column %s.%s → %s", r.table, r.oldName, r.newName)
+		var stmt string
+		switch dialect.Name {
+		case "mysql":
+			// MySQL RENAME COLUMN requires 8.0+. Use CHANGE for broader compatibility.
+			stmt = fmt.Sprintf("ALTER TABLE %s CHANGE %s %s BIGINT NOT NULL DEFAULT 0", q(r.table), q(r.oldName), q(r.newName))
+		case "pgx", "sqlite":
+			stmt = fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO %s", q(r.table), q(r.oldName), q(r.newName))
+		default:
+			return fmt.Errorf("unsupported dialect for quota column rename: %s", dialect.Name)
+		}
+		if err := db.Exec(stmt).Error; err != nil {
+			return fmt.Errorf("rename %s.%s: %w", r.table, r.oldName, err)
+		}
+	}
+	return nil
 }
 
 func initBlobObjectStore(ctx context.Context, initConnectionTimeout time.Duration) (storage.ObjectStore, error) {

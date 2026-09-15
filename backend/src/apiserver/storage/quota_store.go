@@ -24,16 +24,16 @@ func NewQuotaStore(db *DB) *QuotaStore { return &QuotaStore{db: db} }
 
 func (s *QuotaStore) SetLimit(projectID string, limits model.QuotaLimit) error {
 	_, err := s.db.Exec(`
-		INSERT INTO quota_limits (ProjectID, CPULimit, MemoryLimitGiB, GPU2080Limit, GPUH200Limit)
+		INSERT INTO quota_limits (ProjectID, CPUMilliLimit, MemoryMiBLimit, GPU2080Limit, GPUH200Limit)
 		VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT(ProjectID) DO UPDATE SET CPULimit=excluded.CPULimit,
-		MemoryLimitGiB=excluded.MemoryLimitGiB, GPU2080Limit=excluded.GPU2080Limit,
-		GPUH200Limit=excluded.GPUH200Limit`, projectID, limits.CPULimit, limits.MemoryLimitGiB, limits.GPU2080Limit, limits.GPUH200Limit)
+		ON CONFLICT(ProjectID) DO UPDATE SET CPUMilliLimit=excluded.CPUMilliLimit,
+		MemoryMiBLimit=excluded.MemoryMiBLimit, GPU2080Limit=excluded.GPU2080Limit,
+		GPUH200Limit=excluded.GPUH200Limit`, projectID, limits.CPUMilliLimit, limits.MemoryMiBLimit, limits.GPU2080Limit, limits.GPUH200Limit)
 	if err != nil {
 		// MySQL uses a different upsert syntax; retry through the dialect helper.
-		query := `INSERT INTO quota_limits (ProjectID, CPULimit, MemoryLimitGiB, GPU2080Limit, GPUH200Limit) VALUES (?, ?, ?, ?, ?)`
-		query = s.db.Upsert(query, "ProjectID", true, "CPULimit", "MemoryLimitGiB", "GPU2080Limit", "GPUH200Limit")
-		_, err = s.db.Exec(query, projectID, limits.CPULimit, limits.MemoryLimitGiB, limits.GPU2080Limit, limits.GPUH200Limit)
+		query := `INSERT INTO quota_limits (ProjectID, CPUMilliLimit, MemoryMiBLimit, GPU2080Limit, GPUH200Limit) VALUES (?, ?, ?, ?, ?)`
+		query = s.db.Upsert(query, "ProjectID", true, "CPUMilliLimit", "MemoryMiBLimit", "GPU2080Limit", "GPUH200Limit")
+		_, err = s.db.Exec(query, projectID, limits.CPUMilliLimit, limits.MemoryMiBLimit, limits.GPU2080Limit, limits.GPUH200Limit)
 	}
 	if err != nil {
 		return util.NewInternalServerError(err, "failed to store quota limit")
@@ -43,8 +43,8 @@ func (s *QuotaStore) SetLimit(projectID string, limits model.QuotaLimit) error {
 
 func (s *QuotaStore) GetUsage(projectID string) (model.QuotaLimit, error) {
 	var q model.QuotaLimit
-	err := s.db.QueryRow(`SELECT ProjectID, CPULimit, MemoryLimitGiB, GPU2080Limit, GPUH200Limit, CPUUsed, MemoryUsedGiB, GPU2080Used, GPUH200Used FROM quota_limits WHERE ProjectID = ?`, projectID).
-		Scan(&q.ProjectID, &q.CPULimit, &q.MemoryLimitGiB, &q.GPU2080Limit, &q.GPUH200Limit, &q.CPUUsed, &q.MemoryUsedGiB, &q.GPU2080Used, &q.GPUH200Used)
+	err := s.db.QueryRow(`SELECT ProjectID, CPUMilliLimit, MemoryMiBLimit, GPU2080Limit, GPUH200Limit, CPUMilliUsed, MemoryMiBUsed, GPU2080Used, GPUH200Used FROM quota_limits WHERE ProjectID = ?`, projectID).
+		Scan(&q.ProjectID, &q.CPUMilliLimit, &q.MemoryMiBLimit, &q.GPU2080Limit, &q.GPUH200Limit, &q.CPUMilliUsed, &q.MemoryMiBUsed, &q.GPU2080Used, &q.GPUH200Used)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			q.ProjectID = projectID
@@ -75,8 +75,8 @@ func (s *QuotaStore) Reserve(projectID, runID string, allocation model.QuotaAllo
 	defer tx.Rollback()
 
 	var q model.QuotaLimit
-	row := tx.QueryRow(s.db.SelectForUpdate(`SELECT ProjectID, CPULimit, MemoryLimitGiB, GPU2080Limit, GPUH200Limit, CPUUsed, MemoryUsedGiB, GPU2080Used, GPUH200Used FROM quota_limits WHERE ProjectID = ?`), projectID)
-	err = row.Scan(&q.ProjectID, &q.CPULimit, &q.MemoryLimitGiB, &q.GPU2080Limit, &q.GPUH200Limit, &q.CPUUsed, &q.MemoryUsedGiB, &q.GPU2080Used, &q.GPUH200Used)
+	row := tx.QueryRow(s.db.SelectForUpdate(`SELECT ProjectID, CPUMilliLimit, MemoryMiBLimit, GPU2080Limit, GPUH200Limit, CPUMilliUsed, MemoryMiBUsed, GPU2080Used, GPUH200Used FROM quota_limits WHERE ProjectID = ?`), projectID)
+	err = row.Scan(&q.ProjectID, &q.CPUMilliLimit, &q.MemoryMiBLimit, &q.GPU2080Limit, &q.GPUH200Limit, &q.CPUMilliUsed, &q.MemoryMiBUsed, &q.GPU2080Used, &q.GPUH200Used)
 	if err != nil && err != sql.ErrNoRows {
 		return util.NewInternalServerError(err, "failed to lock quota")
 	}
@@ -88,11 +88,11 @@ func (s *QuotaStore) Reserve(projectID, runID string, allocation model.QuotaAllo
 		details, _ := json.Marshal(quotaDetails(q, allocation))
 		return util.NewResourceExhaustedError(nil, `{"error":"quota_exceeded","message":"Insufficient quota","details":%s}`, details)
 	}
-	_, err = tx.Exec(`UPDATE quota_limits SET CPUUsed=CPUUsed+?, MemoryUsedGiB=MemoryUsedGiB+?, GPU2080Used=GPU2080Used+?, GPUH200Used=GPUH200Used+? WHERE ProjectID=?`, allocation.CPU, allocation.MemoryGiB, allocation.GPU2080, allocation.GPUH200, projectID)
+	_, err = tx.Exec(`UPDATE quota_limits SET CPUMilliUsed=CPUMilliUsed+?, MemoryMiBUsed=MemoryMiBUsed+?, GPU2080Used=GPU2080Used+?, GPUH200Used=GPUH200Used+? WHERE ProjectID=?`, allocation.CPUMilli, allocation.MemoryMiB, allocation.GPU2080, allocation.GPUH200, projectID)
 	if err != nil {
 		return util.NewInternalServerError(err, "failed to update quota usage")
 	}
-	_, err = tx.Exec(`INSERT INTO quota_allocations (RunUUID, ProjectID, CPU, MemoryGiB, GPU2080, GPUH200) VALUES (?, ?, ?, ?, ?, ?)`, runID, projectID, allocation.CPU, allocation.MemoryGiB, allocation.GPU2080, allocation.GPUH200)
+	_, err = tx.Exec(`INSERT INTO quota_allocations (RunUUID, ProjectID, CPUMilli, MemoryMiB, GPU2080, GPUH200) VALUES (?, ?, ?, ?, ?, ?)`, runID, projectID, allocation.CPUMilli, allocation.MemoryMiB, allocation.GPU2080, allocation.GPUH200)
 	if err != nil {
 		return util.NewInternalServerError(err, "failed to store quota allocation")
 	}
@@ -109,15 +109,15 @@ func (s *QuotaStore) Release(runID string) error {
 	}
 	defer tx.Rollback()
 	var a model.QuotaAllocation
-	err = tx.QueryRow(s.db.SelectForUpdate(`SELECT RunUUID, ProjectID, CPU, MemoryGiB, GPU2080, GPUH200 FROM quota_allocations WHERE RunUUID = ?`), runID).
-		Scan(&a.RunID, &a.ProjectID, &a.CPU, &a.MemoryGiB, &a.GPU2080, &a.GPUH200)
+	err = tx.QueryRow(s.db.SelectForUpdate(`SELECT RunUUID, ProjectID, CPUMilli, MemoryMiB, GPU2080, GPUH200 FROM quota_allocations WHERE RunUUID = ?`), runID).
+		Scan(&a.RunID, &a.ProjectID, &a.CPUMilli, &a.MemoryMiB, &a.GPU2080, &a.GPUH200)
 	if err != nil && err == sql.ErrNoRows {
 		return tx.Commit()
 	}
 	if err != nil {
 		return util.NewInternalServerError(err, "failed to lock quota allocation")
 	}
-	_, err = tx.Exec(`UPDATE quota_limits SET CPUUsed=MAX(0, CPUUsed-?), MemoryUsedGiB=MAX(0, MemoryUsedGiB-?), GPU2080Used=MAX(0, GPU2080Used-?), GPUH200Used=MAX(0, GPUH200Used-?) WHERE ProjectID=?`, a.CPU, a.MemoryGiB, a.GPU2080, a.GPUH200, a.ProjectID)
+	_, err = tx.Exec(`UPDATE quota_limits SET CPUMilliUsed=MAX(0, CPUMilliUsed-?), MemoryMiBUsed=MAX(0, MemoryMiBUsed-?), GPU2080Used=MAX(0, GPU2080Used-?), GPUH200Used=MAX(0, GPUH200Used-?) WHERE ProjectID=?`, a.CPUMilli, a.MemoryMiB, a.GPU2080, a.GPUH200, a.ProjectID)
 	if err != nil {
 		return util.NewInternalServerError(err, "failed to release quota usage")
 	}
@@ -130,23 +130,38 @@ func (s *QuotaStore) Release(runID string) error {
 	return nil
 }
 
-func QuantityToCeilCPU(value string) int64 {
+// QuantityToMilliCPU converts a k8s CPU quantity string to millicores (integer).
+// Examples: "1" → 1000, "500m" → 500, "1500m" → 1500.
+func QuantityToMilliCPU(value string) int64 {
+	q, err := k8sresource.ParseQuantity(value)
+	if err != nil {
+		return 0
+	}
+	return q.MilliValue()
+}
+
+// QuantityToCeilMiB converts a k8s memory quantity string to MiB, rounding up.
+// Examples: "1Gi" → 1024, "512Mi" → 512, "100Mi" → 100, "1G" → 954.
+func QuantityToCeilMiB(value string) int64 {
+	q, err := k8sresource.ParseQuantity(value)
+	if err != nil {
+		return 0
+	}
+	return int64(math.Ceil(q.AsApproximateFloat64() / (1024 * 1024)))
+}
+
+// QuantityToCeilInt converts a plain integer quantity string to int64, rounding up.
+// Used for GPU counts where the quantity is always a whole number.
+func QuantityToCeilInt(value string) int64 {
 	q, err := k8sresource.ParseQuantity(value)
 	if err != nil {
 		return 0
 	}
 	return int64(math.Ceil(q.AsApproximateFloat64()))
 }
-func QuantityToCeilGiB(value string) int64 {
-	q, err := k8sresource.ParseQuantity(value)
-	if err != nil {
-		return 0
-	}
-	return int64(math.Ceil(q.AsApproximateFloat64() / (1024 * 1024 * 1024)))
-}
 
 func exceeded(q model.QuotaLimit, a model.QuotaAllocation) bool {
-	return q.CPUUsed+a.CPU > q.CPULimit || q.MemoryUsedGiB+a.MemoryGiB > q.MemoryLimitGiB || q.GPU2080Used+a.GPU2080 > q.GPU2080Limit || q.GPUH200Used+a.GPUH200 > q.GPUH200Limit
+	return q.CPUMilliUsed+a.CPUMilli > q.CPUMilliLimit || q.MemoryMiBUsed+a.MemoryMiB > q.MemoryMiBLimit || q.GPU2080Used+a.GPU2080 > q.GPU2080Limit || q.GPUH200Used+a.GPUH200 > q.GPUH200Limit
 }
 func quotaDetails(q model.QuotaLimit, a model.QuotaAllocation) []model.QuotaExceededDetail {
 	details := []model.QuotaExceededDetail{}
@@ -155,8 +170,8 @@ func quotaDetails(q model.QuotaLimit, a model.QuotaAllocation) []model.QuotaExce
 			details = append(details, model.QuotaExceededDetail{QuotaUnit: unit, Limit: limit, Used: used, Requested: requested})
 		}
 	}
-	add("ai_pipeline_cpu", q.CPULimit, q.CPUUsed, a.CPU)
-	add("ai_pipeline_memory", q.MemoryLimitGiB, q.MemoryUsedGiB, a.MemoryGiB)
+	add("ai_pipeline_cpu", q.CPUMilliLimit, q.CPUMilliUsed, a.CPUMilli)
+	add("ai_pipeline_memory", q.MemoryMiBLimit, q.MemoryMiBUsed, a.MemoryMiB)
 	add("ai_pipeline_gpu_rtx2080", q.GPU2080Limit, q.GPU2080Used, a.GPU2080)
 	add("ai_pipeline_gpu_h200", q.GPUH200Limit, q.GPUH200Used, a.GPUH200)
 	return details

@@ -78,10 +78,10 @@ func (r *ResourceManager) runQuotaAllocation(run *model.Run) (model.QuotaAllocat
 	if len(resources) == 0 {
 		resources = envelope.Limits
 	}
-	allocation.CPU = storage.QuantityToCeilCPU(resources["cpu"])
-	allocation.MemoryGiB = storage.QuantityToCeilGiB(resources["memory"])
+	allocation.CPUMilli = storage.QuantityToMilliCPU(resources["cpu"])
+	allocation.MemoryMiB = storage.QuantityToCeilMiB(resources["memory"])
 	for _, gpu := range envelope.GPUs {
-		count := storage.QuantityToCeilCPU(gpu.GPUCount)
+		count := storage.QuantityToCeilInt(gpu.GPUCount)
 		modelName := strings.ToLower(gpu.GPUModel)
 		switch {
 		case strings.Contains(modelName, "rtx") && strings.Contains(modelName, "2080"):

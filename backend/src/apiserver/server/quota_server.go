@@ -53,7 +53,7 @@ func (s *QuotaServer) PutLimits(w http.ResponseWriter, r *http.Request) {
 		writeQuotaError(w, http.StatusBadRequest, "project_id must be a UUID and limits must be non-negative")
 		return
 	}
-	limits := model.QuotaLimit{ProjectID: request.ProjectID, CPULimit: request.Limits.CPU, MemoryLimitGiB: request.Limits.Memory, GPU2080Limit: request.Limits.GPU2080, GPUH200Limit: request.Limits.GPUH200}
+	limits := model.QuotaLimit{ProjectID: request.ProjectID, CPUMilliLimit: request.Limits.CPU, MemoryMiBLimit: request.Limits.Memory, GPU2080Limit: request.Limits.GPU2080, GPUH200Limit: request.Limits.GPUH200}
 	if err := s.resourceManager.SetQuotaLimit(request.ProjectID, limits); err != nil {
 		writeQuotaError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -113,12 +113,14 @@ func (s *QuotaServer) GetUsageBulk(w http.ResponseWriter, r *http.Request) {
 	writeQuotaJSON(w, response)
 }
 
+// quotaUsed maps model fields to the canonical API quota-unit keys.
+// CPU is in millicores (e.g. 2000 = 2 cores); memory is in MiB (e.g. 1024 = 1 GiB).
 func quotaUsed(usage model.QuotaLimit) map[string]int64 {
-	return map[string]int64{"ai_pipeline_cpu": usage.CPUUsed, "ai_pipeline_memory": usage.MemoryUsedGiB, "ai_pipeline_gpu_rtx2080": usage.GPU2080Used, "ai_pipeline_gpu_h200": usage.GPUH200Used}
+	return map[string]int64{"ai_pipeline_cpu": usage.CPUMilliUsed, "ai_pipeline_memory": usage.MemoryMiBUsed, "ai_pipeline_gpu_rtx2080": usage.GPU2080Used, "ai_pipeline_gpu_h200": usage.GPUH200Used}
 }
 
 func quotaLimits(limits model.QuotaLimit) map[string]int64 {
-	return map[string]int64{"ai_pipeline_cpu": limits.CPULimit, "ai_pipeline_memory": limits.MemoryLimitGiB, "ai_pipeline_gpu_rtx2080": limits.GPU2080Limit, "ai_pipeline_gpu_h200": limits.GPUH200Limit}
+	return map[string]int64{"ai_pipeline_cpu": limits.CPUMilliLimit, "ai_pipeline_memory": limits.MemoryMiBLimit, "ai_pipeline_gpu_rtx2080": limits.GPU2080Limit, "ai_pipeline_gpu_h200": limits.GPUH200Limit}
 }
 func writeQuotaJSON(w http.ResponseWriter, value interface{}) {
 	w.Header().Set("Content-Type", "application/json")
