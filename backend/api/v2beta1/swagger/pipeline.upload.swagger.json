@@ -1,25 +1,28 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "pipeline upload",
+    "title": "Kubeflow Pipelines Upload API",
+    "description": "Uploads compiled pipeline packages and pipeline versions.",
     "version": "version not set"
   },
   "schemes": ["http", "https"],
   "paths": {
     "/apis/v2beta1/pipelines/upload": {
       "post": {
+        "summary": "Upload a pipeline and its initial version",
+        "description": "Creates a parent pipeline and an initial executable pipeline version from a compiled pipeline package.",
         "operationId": "UploadPipeline",
         "consumes": ["multipart/form-data"],
         "produces": ["application/json"],
         "responses": {
           "200": {
-            "description": "",
+            "description": "The created pipeline and initial pipeline version.",
             "schema": {
-              "$ref": "#/definitions/v2beta1Pipeline"
+              "$ref": "#/definitions/v2beta1CreatePipelineAndVersionResponse"
             }
           },
           "default": {
-            "description": "",
+            "description": "The upload failed.",
             "schema": {
               "$ref": "#/definitions/googlerpcStatus"
             }
@@ -34,28 +37,48 @@
             "description": "The pipeline to upload. Maximum size of 32MB is supported."
           },
           {
+            "name": "pipeline_id",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional client-provided ID for the parent pipeline. If omitted, the database-backed API server generates one."
+          },
+          {
+            "name": "pipeline_version_id",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional client-provided ID for the initial pipeline version. If omitted, the database-backed API server generates one."
+          },
+          {
             "name": "name",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "description": "Optional pipeline name. If omitted, the name is derived from the uploaded package."
           },
           {
             "name": "display_name",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "description": "Optional display name for the pipeline."
           },
           {
             "name": "description",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "description": "Optional description for the pipeline."
           },
           {
             "name": "namespace",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "description": "Namespace that owns the pipeline. If omitted, the API server resolves the default namespace."
           }
         ],
         "tags": ["PipelineUploadService"]
@@ -63,18 +86,20 @@
     },
     "/apis/v2beta1/pipelines/upload_version": {
       "post": {
+        "summary": "Upload a new version of an existing pipeline",
+        "description": "Creates an executable pipeline version under the parent pipeline identified by pipelineid.",
         "operationId": "UploadPipelineVersion",
         "consumes": ["multipart/form-data"],
         "produces": ["application/json"],
         "responses": {
           "200": {
-            "description": "",
+            "description": "The created pipeline version.",
             "schema": {
               "$ref": "#/definitions/v2beta1PipelineVersion"
             }
           },
           "default": {
-            "description": "",
+            "description": "The upload failed.",
             "schema": {
               "$ref": "#/definitions/googlerpcStatus"
             }
@@ -92,32 +117,103 @@
             "name": "name",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "description": "Optional pipeline version name. If omitted, the name is derived from the uploaded package."
           },
           {
             "name": "display_name",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "description": "Optional display name for the pipeline version."
           },
           {
             "name": "pipelineid",
             "in": "query",
+            "required": true,
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the existing parent pipeline."
+          },
+          {
+            "name": "pipeline_version_id",
+            "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional client-provided ID for the new pipeline version. If omitted, the database-backed API server generates one."
           },
           {
             "name": "description",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "description": "Optional description for the pipeline version."
           }
         ],
         "tags": ["PipelineUploadService"]
       }
+    },
+    "/apis/v2beta1/pipelines/{pipeline_id}/versions/{pipeline_version_id}:download": {
+      "get": {
+        "summary": "Download a pipeline version definition",
+        "description": "Downloads the original executable definition stored for a pipeline version. The pipeline version must belong to the pipeline identified by pipeline_id.",
+        "operationId": "DownloadPipelineVersion",
+        "produces": ["application/yaml"],
+        "responses": {
+          "200": {
+            "description": "The pipeline version definition as a downloadable YAML file.",
+            "schema": {
+              "type": "file"
+            },
+            "headers": {
+              "Content-Disposition": {
+                "type": "string",
+                "description": "Attachment filename generated from the pipeline version ID."
+              }
+            }
+          },
+          "default": {
+            "description": "The pipeline version could not be downloaded.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pipeline_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "ID of the parent pipeline."
+          },
+          {
+            "name": "pipeline_version_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "ID of the pipeline version whose definition will be downloaded."
+          }
+        ],
+        "tags": ["PipelineService"]
+      }
     }
   },
   "definitions": {
+    "v2beta1CreatePipelineAndVersionResponse": {
+      "type": "object",
+      "properties": {
+        "pipeline": {
+          "$ref": "#/definitions/v2beta1Pipeline",
+          "description": "The newly created parent pipeline."
+        },
+        "pipeline_version": {
+          "$ref": "#/definitions/v2beta1PipelineVersion",
+          "description": "The newly created initial pipeline version containing the executable spec."
+        }
+      }
+    },
     "v2beta1Pipeline": {
       "type": "object",
       "properties": {
@@ -191,6 +287,10 @@
         "pipeline_spec": {
           "type": "object",
           "description": "Output. The pipeline spec for the pipeline version."
+        },
+        "resource_envelope": {
+          "type": "object",
+          "description": "Output. Peak Kubernetes resource requests and limits calculated from the immutable pipeline version. The calculation field is EXACT, UPPER_BOUND, or UNKNOWN; warnings explain conservative or unresolved cases."
         },
         "error": {
           "$ref": "#/definitions/googlerpcStatus",

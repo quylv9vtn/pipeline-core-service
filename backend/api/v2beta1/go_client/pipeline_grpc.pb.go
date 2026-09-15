@@ -62,7 +62,7 @@ type PipelineServiceClient interface {
 	// pipeline has any versions. If cascade is true, it will also delete all pipeline versions.
 	DeletePipeline(ctx context.Context, in *DeletePipelineRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Creates a new pipeline and a new pipeline version in a single transaction.
-	CreatePipelineAndVersion(ctx context.Context, in *CreatePipelineAndVersionRequest, opts ...grpc.CallOption) (*Pipeline, error)
+	CreatePipelineAndVersion(ctx context.Context, in *CreatePipelineAndVersionRequest, opts ...grpc.CallOption) (*CreatePipelineAndVersionResponse, error)
 	// Adds a pipeline version to the specified pipeline ID.
 	CreatePipelineVersion(ctx context.Context, in *CreatePipelineVersionRequest, opts ...grpc.CallOption) (*PipelineVersion, error)
 	// Gets a pipeline version by pipeline version ID and pipeline ID.
@@ -131,9 +131,9 @@ func (c *pipelineServiceClient) DeletePipeline(ctx context.Context, in *DeletePi
 	return out, nil
 }
 
-func (c *pipelineServiceClient) CreatePipelineAndVersion(ctx context.Context, in *CreatePipelineAndVersionRequest, opts ...grpc.CallOption) (*Pipeline, error) {
+func (c *pipelineServiceClient) CreatePipelineAndVersion(ctx context.Context, in *CreatePipelineAndVersionRequest, opts ...grpc.CallOption) (*CreatePipelineAndVersionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Pipeline)
+	out := new(CreatePipelineAndVersionResponse)
 	err := c.cc.Invoke(ctx, PipelineService_CreatePipelineAndVersion_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -197,7 +197,7 @@ type PipelineServiceServer interface {
 	// pipeline has any versions. If cascade is true, it will also delete all pipeline versions.
 	DeletePipeline(context.Context, *DeletePipelineRequest) (*emptypb.Empty, error)
 	// Creates a new pipeline and a new pipeline version in a single transaction.
-	CreatePipelineAndVersion(context.Context, *CreatePipelineAndVersionRequest) (*Pipeline, error)
+	CreatePipelineAndVersion(context.Context, *CreatePipelineAndVersionRequest) (*CreatePipelineAndVersionResponse, error)
 	// Adds a pipeline version to the specified pipeline ID.
 	CreatePipelineVersion(context.Context, *CreatePipelineVersionRequest) (*PipelineVersion, error)
 	// Gets a pipeline version by pipeline version ID and pipeline ID.
@@ -231,7 +231,7 @@ func (UnimplementedPipelineServiceServer) ListPipelines(context.Context, *ListPi
 func (UnimplementedPipelineServiceServer) DeletePipeline(context.Context, *DeletePipelineRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeletePipeline not implemented")
 }
-func (UnimplementedPipelineServiceServer) CreatePipelineAndVersion(context.Context, *CreatePipelineAndVersionRequest) (*Pipeline, error) {
+func (UnimplementedPipelineServiceServer) CreatePipelineAndVersion(context.Context, *CreatePipelineAndVersionRequest) (*CreatePipelineAndVersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreatePipelineAndVersion not implemented")
 }
 func (UnimplementedPipelineServiceServer) CreatePipelineVersion(context.Context, *CreatePipelineVersionRequest) (*PipelineVersion, error) {

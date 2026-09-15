@@ -15,8 +15,10 @@
 package storage
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -146,7 +148,21 @@ func TestPostgreSQLDialect_Rebind(t *testing.T) {
 	assert.Equal(t, `SELECT "UUID" FROM experiments WHERE "UUID" = $1`, actual)
 }
 
+func TestPostgreSQLDialect_RebindUpsert(t *testing.T) {
+	dialect := NewPostgreSQLDialect()
+	actual := dialect.Rebind("INSERT INTO tasks (UUID, RunUUID, Name) VALUES (?, ?, ?) ON CONFLICT(UUID) DO UPDATE SET Name=excluded.Name RETURNING UUID")
+	assert.Equal(t, `INSERT INTO tasks ("UUID", "RunUUID", "Name") VALUES ($1, $2, $3) ON CONFLICT("UUID") DO UPDATE SET "Name"=excluded."Name" RETURNING "UUID"`, actual)
+}
+
 func TestPostgreSQLDialect_GroupConcat(t *testing.T) {
 	dialect := NewPostgreSQLDialect()
 	assert.Equal(t, "STRING_AGG(r.Payload, ',')", dialect.GroupConcat("r.Payload", ","))
+}
+
+func TestPostgreSQLDialect_IsDuplicateError(t *testing.T) {
+	dialect := NewPostgreSQLDialect()
+	assert.True(t, dialect.IsDuplicateError(&pgconn.PgError{Code: "23505"}))
+	assert.True(t, dialect.IsDuplicateError(fmt.Errorf("wrapped: %w", &pgconn.PgError{Code: "23505"})))
+	assert.False(t, dialect.IsDuplicateError(&pgconn.PgError{Code: "23503"}))
+	assert.False(t, dialect.IsDuplicateError(fmt.Errorf("not a PostgreSQL error")))
 }

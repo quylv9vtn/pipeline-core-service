@@ -1,0 +1,43 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: kubeflow
+
+# Production MLMD overlay. The API server reads metadata directly from the
+# native gRPC service, so the browser-only gRPC-Web Envoy adapter is omitted.
+# The standard postgres overlay remains unchanged for debug/TLS installations
+# that still need metadata-envoy-service.
+resources:
+- ../postgres
+
+patches:
+- target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: metadata-envoy-deployment
+  patch: |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: metadata-envoy-deployment
+    $patch: delete
+- target:
+    version: v1
+    kind: Service
+    name: metadata-envoy-service
+  patch: |-
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: metadata-envoy-service
+    $patch: delete
+- target:
+    version: v1
+    kind: ConfigMap
+    name: metadata-envoy-configmap
+  patch: |-
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: metadata-envoy-configmap
+    $patch: delete

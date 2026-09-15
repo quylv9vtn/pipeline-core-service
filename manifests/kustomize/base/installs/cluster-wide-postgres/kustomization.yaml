@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: kubeflow
+resources:
+- ../generic/postgres
+- cluster-wide-rbac.yaml
+patches:
+- path: persistence-agent-patch.yaml
+- path: scheduled-workflow-patch.yaml
+- path: metadata-writer-patch.yaml
+- path: cache-server-patch.yaml
+- path: viewer-controller-patch.yaml

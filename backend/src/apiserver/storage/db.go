@@ -17,11 +17,13 @@ package storage
 import (
 	"bytes"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/VividCortex/mysqlerr"
 	"github.com/go-sql-driver/mysql"
+	"github.com/jackc/pgx/v5/pgconn"
 	sqlite3 "github.com/mattn/go-sqlite3"
 )
 
@@ -288,13 +290,13 @@ func shouldQuotePostgreSQLIdentifier(identifier string) bool {
 	}
 	keywords := map[string]struct{}{
 		"ALL": {}, "AND": {}, "AS": {}, "ASC": {}, "BY": {}, "CASE": {},
-		"CONCAT": {}, "COUNT": {}, "DELETE": {}, "DESC": {}, "DISTINCT": {},
-		"ELSE": {}, "END": {}, "EXISTS": {}, "FALSE": {}, "FOR": {}, "FROM": {},
+		"CONCAT": {}, "CONFLICT": {}, "COUNT": {}, "DELETE": {}, "DESC": {}, "DISTINCT": {},
+		"DO": {}, "ELSE": {}, "END": {}, "EXCLUDED": {}, "EXISTS": {}, "FALSE": {}, "FOR": {}, "FROM": {},
 		"GROUP": {}, "HAVING": {}, "IN": {}, "INNER": {}, "INSERT": {}, "INTO": {},
 		"IS": {}, "JOIN": {}, "LEFT": {}, "LIKE": {}, "LIMIT": {}, "NOT": {},
-		"NULL": {}, "ON": {}, "OR": {}, "ORDER": {}, "OVER": {}, "PARTITION": {},
+		"NOTHING": {}, "NULL": {}, "ON": {}, "OR": {}, "ORDER": {}, "OVER": {}, "PARTITION": {},
 		"RIGHT": {}, "ROW_NUMBER": {}, "SELECT": {}, "SET": {}, "STRING_AGG": {},
-		"THEN": {}, "TRUE": {}, "UNION": {}, "UPDATE": {}, "VALUES": {}, "WHEN": {},
+		"RETURNING": {}, "THEN": {}, "TRUE": {}, "UNION": {}, "UPDATE": {}, "VALUES": {}, "WHEN": {},
 		"WHERE": {},
 	}
 	_, keyword := keywords[strings.ToUpper(identifier)]
@@ -316,7 +318,10 @@ func (d PostgreSQLDialect) Concat(exprs []string, separator string) string {
 	return strings.Join(exprs, joiner)
 }
 
-func (d PostgreSQLDialect) IsDuplicateError(err error) bool     { return false }
+func (d PostgreSQLDialect) IsDuplicateError(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}
 func (d PostgreSQLDialect) SelectForUpdate(query string) string { return query + " FOR UPDATE" }
 func (d PostgreSQLDialect) Upsert(query string, key string, overwrite bool, columns ...string) string {
 	return fmt.Sprintf("%v ON CONFLICT(%v) DO UPDATE SET %v", query, key, prepareUpdateSuffixSQLite(columns, overwrite))

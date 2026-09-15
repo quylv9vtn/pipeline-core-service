@@ -22,12 +22,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/golang/glog"
+	"github.com/google/uuid"
 	apiv1beta1 "github.com/kubeflow/pipelines/backend/api/v1beta1/go_client"
+	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/common"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/model"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/resource"
@@ -47,6 +50,8 @@ const (
 	DisplayNameQueryStringKey = "display_name"
 	DescriptionQueryStringKey = "description"
 	NamespaceStringQuery      = "namespace"
+	PipelineIDQueryStringKey  = "pipeline_id"
+	VersionIDQueryStringKey   = "pipeline_version_id"
 	// Pipeline Id in the query string specifies a pipeline when creating versions.
 	PipelineKey = "pipelineid"
 )
@@ -119,6 +124,16 @@ func (s *PipelineUploadServer) uploadPipeline(apiVersion string, w http.Response
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	pipelineID := r.URL.Query().Get(PipelineIDQueryStringKey)
+	pipelineVersionID := r.URL.Query().Get(VersionIDQueryStringKey)
+	if err := validateOptionalUploadUUID(PipelineIDQueryStringKey, pipelineID); err != nil {
+		s.writeErrorToResponse(w, http.StatusBadRequest, err)
+		return
+	}
+	if err := validateOptionalUploadUUID(VersionIDQueryStringKey, pipelineVersionID); err != nil {
+		s.writeErrorToResponse(w, http.StatusBadRequest, err)
+		return
+	}
 	pipelineNamespace = s.resourceManager.ReplaceNamespace(pipelineNamespace)
 	err = validation.ValidateNamespaceRequired(pipelineNamespace)
 	if err != nil {
@@ -145,6 +160,7 @@ func (s *PipelineUploadServer) uploadPipeline(apiVersion string, w http.Response
 	}
 
 	pipeline := &model.Pipeline{
+		UUID:        pipelineID,
 		Name:        pipelineName,
 		DisplayName: displayName,
 		Description: model.LargeText(r.URL.Query().Get(DescriptionQueryStringKey)),
@@ -152,6 +168,7 @@ func (s *PipelineUploadServer) uploadPipeline(apiVersion string, w http.Response
 	}
 
 	pipelineVersion := &model.PipelineVersion{
+		UUID:         pipelineVersionID,
 		Name:         pipeline.Name,
 		DisplayName:  pipeline.DisplayName,
 		Description:  pipeline.Description,
@@ -186,7 +203,10 @@ func (s *PipelineUploadServer) uploadPipeline(apiVersion string, w http.Response
 	case "v1beta1":
 		messageToMarshal = toApiPipelineV1(newPipeline, newPipelineVersion)
 	case "v2beta1":
-		messageToMarshal = toApiPipeline(newPipeline)
+		messageToMarshal = &apiv2beta1.CreatePipelineAndVersionResponse{
+			Pipeline:        toApiPipeline(newPipeline),
+			PipelineVersion: toApiPipelineVersion(newPipelineVersion),
+		}
 	default:
 		glog.Errorf("Failed to create a pipeline. Invalid API version: %v", apiVersion)
 		s.writeErrorToResponse(w, http.StatusInternalServerError, errors.New("Failed to create a pipeline"))
@@ -253,6 +273,11 @@ func (s *PipelineUploadServer) uploadPipelineVersion(apiVersion string, w http.R
 		s.writeErrorToResponse(w, http.StatusBadRequest, errors.New("Failed to create a pipeline version"))
 		return
 	}
+	pipelineVersionID := r.URL.Query().Get(VersionIDQueryStringKey)
+	if err := validateOptionalUploadUUID(VersionIDQueryStringKey, pipelineVersionID); err != nil {
+		s.writeErrorToResponse(w, http.StatusBadRequest, err)
+		return
+	}
 
 	versionNameQueryString := r.URL.Query().Get(NameQueryStringKey)
 	versionDisplayNameQueryString := r.URL.Query().Get(DisplayNameQueryStringKey)
@@ -297,6 +322,7 @@ func (s *PipelineUploadServer) uploadPipelineVersion(apiVersion string, w http.R
 
 	newPipelineVersion, err := s.resourceManager.CreatePipelineVersion(
 		&model.PipelineVersion{
+			UUID:         pipelineVersionID,
 			Name:         pipelineVersionName,
 			DisplayName:  displayName,
 			Description:  model.LargeText(r.URL.Query().Get(DescriptionQueryStringKey)),
@@ -347,6 +373,17 @@ func (s *PipelineUploadServer) uploadPipelineVersion(apiVersion string, w http.R
 	if s.options.CollectMetrics {
 		pipelineVersionCount.Inc()
 	}
+}
+
+func validateOptionalUploadUUID(fieldName, value string) error {
+	if value == "" {
+		return nil
+	}
+	parsed, err := uuid.Parse(value)
+	if err != nil || parsed.String() != strings.ToLower(value) {
+		return fmt.Errorf("%s must be a canonical UUID", fieldName)
+	}
+	return nil
 }
 
 func (s *PipelineUploadServer) canUploadVersionedPipeline(r *http.Request, pipelineID string, resourceAttributes *authorizationv1.ResourceAttributes) error {

@@ -303,6 +303,35 @@ func TestCreateExperiment_DifferentNamespaces(t *testing.T) {
 	assert.Equal(t, experimentExpected, *experiment, "Got unexpected experiment")
 }
 
+func TestCreateExperiment_PreservesCallerProvidedID(t *testing.T) {
+	db := NewFakeDBOrFatal()
+	defer db.Close()
+	experimentStore := NewExperimentStore(db, util.NewFakeTimeForEpoch(), util.NewFakeUUIDGeneratorOrFatal("", errors.New("UUID generator must not be called")))
+	experiment := createExperiment("experiment-with-custom-id")
+	experiment.UUID = fakeID
+
+	created, err := experimentStore.CreateExperiment(experiment)
+	assert.NoError(t, err)
+	assert.Equal(t, fakeID, created.UUID)
+}
+
+func TestCreateExperiment_DuplicatedCallerProvidedID(t *testing.T) {
+	db := NewFakeDBOrFatal()
+	defer db.Close()
+	experimentStore := NewExperimentStore(db, util.NewFakeTimeForEpoch(), util.NewFakeUUIDGeneratorOrFatal(fakeIDTwo, nil))
+	first := createExperiment("experiment1")
+	first.UUID = fakeID
+	_, err := experimentStore.CreateExperiment(first)
+	assert.NoError(t, err)
+
+	second := createExperiment("experiment2")
+	second.UUID = fakeID
+	_, err = experimentStore.CreateExperiment(second)
+	assert.Error(t, err)
+	assert.Equal(t, codes.AlreadyExists, err.(*util.UserError).ExternalStatusCode())
+	assert.Contains(t, err.Error(), "The ID or name already exists")
+}
+
 func TestCreateExperiment_DuplicatedKey(t *testing.T) {
 	db := NewFakeDBOrFatal()
 	defer db.Close()
@@ -314,7 +343,7 @@ func TestCreateExperiment_DuplicatedKey(t *testing.T) {
 	experimentStore = NewExperimentStore(db, util.NewFakeTimeForEpoch(), util.NewFakeUUIDGeneratorOrFatal(fakeIDTwo, nil))
 	_, err = experimentStore.CreateExperiment(experiment)
 	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "The name experiment1 already exist")
+	assert.Contains(t, err.Error(), "The name experiment1 already exists")
 }
 
 func TestCreateExperiment_InternalServerError(t *testing.T) {

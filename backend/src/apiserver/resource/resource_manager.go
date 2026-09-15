@@ -101,6 +101,7 @@ type ClientManagerInterface interface {
 	PipelineStore() storage.PipelineStoreInterface
 	JobStore() storage.JobStoreInterface
 	RunStore() storage.RunStoreInterface
+	QuotaStore() storage.QuotaStoreInterface
 	TaskStore() storage.TaskStoreInterface
 	DBStatusStore() storage.DBStatusStoreInterface
 	DefaultExperimentStore() storage.DefaultExperimentStoreInterface
@@ -131,6 +132,7 @@ type ResourceManager struct {
 	pipelineStore             storage.PipelineStoreInterface
 	jobStore                  storage.JobStoreInterface
 	runStore                  storage.RunStoreInterface
+	quotaStore                storage.QuotaStoreInterface
 	taskStore                 storage.TaskStoreInterface
 	dBStatusStore             storage.DBStatusStoreInterface
 	defaultExperimentStore    storage.DefaultExperimentStoreInterface
@@ -153,6 +155,7 @@ func NewResourceManager(clientManager ClientManagerInterface, options *ResourceM
 		pipelineStore:             clientManager.PipelineStore(),
 		jobStore:                  clientManager.JobStore(),
 		runStore:                  clientManager.RunStore(),
+		quotaStore:                clientManager.QuotaStore(),
 		taskStore:                 clientManager.TaskStore(),
 		dBStatusStore:             clientManager.DBStatusStore(),
 		defaultExperimentStore:    clientManager.DefaultExperimentStore(),
@@ -168,6 +171,12 @@ func NewResourceManager(clientManager ClientManagerInterface, options *ResourceM
 		authenticators:            clientManager.Authenticators(),
 		options:                   options,
 	}
+}
+
+// KubernetesCoreClient exposes the Kubernetes core client to HTTP services that
+// manage cluster-scoped core resources on behalf of the API server.
+func (r *ResourceManager) KubernetesCoreClient() client.KubernetesCoreInterface {
+	return r.k8sCoreClient
 }
 
 func (r *ResourceManager) getWorkflowClient(namespace string) util.ExecutionInterface {
@@ -432,6 +441,9 @@ func (r *ResourceManager) CreatePipelineAndPipelineVersion(p *model.Pipeline, pv
 	if err != nil {
 		return nil, nil, util.Wrap(err, "Failed to create a pipeline and a pipeline version due to template creation error")
 	}
+	if err := setPipelineVersionResourceEnvelope(pv, tmpl); err != nil {
+		return nil, nil, util.Wrap(err, "Failed to calculate the pipeline version resource envelope")
+	}
 	// Validate pipeline's name in:
 	// 1. pipeline spec for v2 pipelines and v2-compatible pipeline must comply with MLMD requirements
 	// 2. display name must be non-empty
@@ -602,6 +614,9 @@ func (r *ResourceManager) CreateRun(ctx context.Context, run *model.Run) (*model
 	}
 
 	executionSpec.SetExecutionNamespace(k8sNamespace)
+	if err := r.reserveRunQuota(ctx, run); err != nil {
+		return nil, util.Wrap(err, "Failed to create a run due to quota enforcement")
+	}
 
 	// assign OwnerReference to scheduledworkflow
 	if run.RecurringRunId != "" {
@@ -618,6 +633,7 @@ func (r *ResourceManager) CreateRun(ctx context.Context, run *model.Run) (*model
 
 	newExecSpec, err := r.getWorkflowClient(k8sNamespace).Create(ctx, executionSpec, v1.CreateOptions{})
 	if err != nil {
+		_ = r.releaseRunQuota(run.UUID)
 		if err, ok := err.(net.Error); ok && err.Timeout() {
 			return nil, util.NewUnavailableServerError(err, "Failed to create a workflow for (%s) - try again later", executionSpec.ExecutionName())
 		}
@@ -627,7 +643,6 @@ func (r *ResourceManager) CreateRun(ctx context.Context, run *model.Run) (*model
 	run.K8SName = newExecSpec.ExecutionName()
 	run.ServiceAccount = newExecSpec.ServiceAccount()
 	run.RunDetails.State = model.RuntimeState(string(newExecSpec.ExecutionStatus().Condition())).ToV2()
-	run.RunDetails.Conditions = string(run.RunDetails.State.ToV1())
 	// TODO(gkcalat): consider to avoid updating runtime manifest at create time and let
 	// persistence agent update the runtime data.
 	if tmpl.GetTemplateType() == template.V1 && run.RunDetails.WorkflowRuntimeManifest == "" {
@@ -647,6 +662,7 @@ func (r *ResourceManager) CreateRun(ctx context.Context, run *model.Run) (*model
 	run.State = model.RuntimeStatePending
 	newRun, err := r.runStore.CreateRun(run)
 	if err != nil {
+		_ = r.releaseRunQuota(run.UUID)
 		return nil, util.Wrap(err, "Failed to create a run")
 	}
 
@@ -811,9 +827,12 @@ func (r *ResourceManager) DeleteRun(ctx context.Context, runId string) error {
 	if err != nil {
 		return util.Wrapf(err, "Failed to delete a run %v", runId)
 	}
+	if err := r.releaseRunQuota(runId); err != nil {
+		return util.Wrapf(err, "Failed to release quota for deleted run %v", runId)
+	}
 
 	if r.options.CollectMetrics {
-		if run.Conditions == string(exec.ExecutionSucceeded) {
+		if run.State == model.RuntimeStateSucceeded {
 			if util.GetMetricValue(workflowSuccessCounter) > 0 {
 				workflowSuccessCounter.WithLabelValues(run.Namespace, run.DisplayName).Dec()
 			}
@@ -985,7 +1004,7 @@ func (r *ResourceManager) RetryRun(ctx context.Context, runId string) error {
 		newExecSpec = newCreatedWorkflow
 	}
 	condition := string(newExecSpec.ExecutionStatus().Condition())
-	err = r.runStore.UpdateRun(&model.Run{UUID: runId, RunDetails: model.RunDetails{Conditions: condition, FinishedAtInSec: 0, WorkflowRuntimeManifest: model.LargeText(newExecSpec.ToStringForStore()), State: model.RuntimeState(condition).ToV2()}})
+	err = r.runStore.UpdateRun(&model.Run{UUID: runId, RunDetails: model.RunDetails{FinishedAtInSec: 0, WorkflowRuntimeManifest: model.LargeText(newExecSpec.ToStringForStore()), State: model.RuntimeState(condition).ToV2()}})
 	if err != nil {
 		return util.NewInternalServerError(err, "Failed to retry run %s due to error updating entry", runId)
 	}
@@ -1372,11 +1391,15 @@ func (r *ResourceManager) ReportWorkflowResource(ctx context.Context, execSpec u
 	run, updateError := r.GetRun(runId)
 	if updateError == nil {
 		run.State = state
-		run.Conditions = string(state.ToV1())
 		run.FinishedAtInSec = execStatus.FinishedAt()
 		run.WorkflowRuntimeManifest = model.LargeText(execSpec.ToStringForStore())
 		if updateError = r.runStore.UpdateRun(run); updateError != nil {
 			return nil, util.Wrapf(updateError, "Failed to report a workflow for existing run %s during updating the run. Check if the run entry is corrupted", runId)
+		}
+		if execStatus.IsInFinalState() {
+			if releaseError := r.releaseRunQuota(runId); releaseError != nil {
+				return nil, util.Wrapf(releaseError, "Failed to release quota for completed run %s", runId)
+			}
 		}
 	}
 	if jobId == "" {
@@ -1453,9 +1476,15 @@ func (r *ResourceManager) ReportWorkflowResource(ctx context.Context, execSpec u
 				CreatedAtInSec:          objMeta.CreationTimestamp.Unix(),
 				ScheduledAtInSec:        scheduledTimeInSec,
 				FinishedAtInSec:         execStatus.FinishedAt(),
-				Conditions:              string(state.ToV1()),
 				State:                   state,
 			},
+		}
+		quotaReserved := false
+		if !execStatus.IsInFinalState() {
+			if err = r.reserveRunQuota(ctx, run); err != nil {
+				return nil, util.Wrapf(err, "Failed to enforce quota for recurring run %s", runId)
+			}
+			quotaReserved = true
 		}
 		run, err = r.runStore.CreateRun(run)
 		if r.options.CollectMetrics && !execStatus.StartedAtTime().Time.IsZero() {
@@ -1463,6 +1492,9 @@ func (r *ResourceManager) ReportWorkflowResource(ctx context.Context, execSpec u
 			recurringPipelineRunReportGap.Observe(reportGap)
 		}
 		if err != nil {
+			if quotaReserved {
+				_ = r.releaseRunQuota(runId)
+			}
 			return nil, util.Wrapf(err, "Failed to report a workflow due to error creating run %s", runId)
 		} else {
 			runId = run.UUID
@@ -1759,6 +1791,9 @@ func (r *ResourceManager) CreatePipelineVersion(pv *model.PipelineVersion) (*mod
 	if err != nil {
 		return nil, util.Wrap(err, "Failed to create a pipeline version due to template creation error")
 	}
+	if err := setPipelineVersionResourceEnvelope(pv, tmpl); err != nil {
+		return nil, util.Wrap(err, "Failed to calculate the pipeline version resource envelope")
+	}
 	// Validate pipeline's name in:
 	// 1. pipeline spec for v2 pipelines and v2-compatible pipeline must comply with MLMD requirements
 	// 2. display name must be non-empty
@@ -1803,6 +1838,28 @@ func (r *ResourceManager) CreatePipelineVersion(pv *model.PipelineVersion) (*mod
 		return nil, util.Wrapf(err, "Failed to change the status of a new pipeline version with id %v", version.UUID)
 	}
 	return version, nil
+}
+
+func setPipelineVersionResourceEnvelope(pv *model.PipelineVersion, tmpl template.Template) error {
+	envelope := &ResourceEnvelope{
+		Scope:             "DECLARED_CONTAINER_RESOURCES",
+		Calculation:       "UNKNOWN",
+		CalculatorVersion: "v1",
+		Warnings:          []string{"Resource envelope calculation is only supported for V2 pipeline specs"},
+	}
+	if v2Template, ok := tmpl.(*template.V2Spec); ok {
+		calculated, err := CalculateResourceEnvelope(v2Template.PipelineSpec(), v2Template.PlatformSpec())
+		if err != nil {
+			return err
+		}
+		envelope = calculated
+	}
+	data, err := json.Marshal(envelope)
+	if err != nil {
+		return fmt.Errorf("marshal resource envelope: %w", err)
+	}
+	pv.ResourceEnvelope = model.LargeText(data)
+	return nil
 }
 
 // Returns a pipeline version by Id.
@@ -2033,6 +2090,79 @@ func (r *ResourceManager) FetchNamespaceFromPipelineVersionId(versionId string) 
 	return r.FetchNamespaceFromPipelineId(pipelineVersion.PipelineId)
 }
 
+// ResolveExecutionNamespace returns the Kubernetes namespace owned by the referenced pipeline.
+// Runs created by a recurring run inherit the recurring run's pipeline reference and namespace.
+// An empty return value means that the request contains an inline pipeline spec with no stored
+// pipeline to inherit from.
+func (r *ResourceManager) ResolveExecutionNamespace(pipelineSpec model.PipelineSpec, recurringRunId string) (string, error) {
+	if recurringRunId != "" {
+		job, err := r.GetJob(recurringRunId)
+		if err != nil {
+			return "", util.Wrapf(err, "Failed to resolve namespace from recurring run %v", recurringRunId)
+		}
+		pipelineSpec = job.PipelineSpec
+		if pipelineSpec.PipelineId == "" && pipelineSpec.PipelineVersionId == "" && pipelineSpec.PipelineName == "" {
+			return r.executionNamespace(job.Namespace), nil
+		}
+	}
+
+	pipelineId := pipelineSpec.PipelineId
+	if pipelineSpec.PipelineVersionId != "" {
+		pipelineVersion, err := r.GetPipelineVersion(pipelineSpec.PipelineVersionId)
+		if err != nil {
+			return "", util.Wrapf(err, "Failed to resolve namespace from pipeline version %v", pipelineSpec.PipelineVersionId)
+		}
+		if pipelineId != "" && pipelineVersion.PipelineId != pipelineId {
+			return "", util.NewInvalidInputError("Pipeline version %v belongs to pipeline %v (not %v)", pipelineSpec.PipelineVersionId, pipelineVersion.PipelineId, pipelineId)
+		}
+		pipelineId = pipelineVersion.PipelineId
+	} else if pipelineId == "" && pipelineSpec.PipelineName != "" {
+		resourceIds := common.ParseResourceIdsFromFullName(pipelineSpec.PipelineName)
+		if versionId := resourceIds["PipelineVersionId"]; versionId != "" {
+			pipelineVersion, err := r.GetPipelineVersion(versionId)
+			if err != nil {
+				return "", util.Wrapf(err, "Failed to resolve namespace from pipeline version %v", versionId)
+			}
+			pipelineId = pipelineVersion.PipelineId
+		} else {
+			pipelineId = resourceIds["PipelineId"]
+		}
+	}
+
+	if pipelineId == "" {
+		return "", nil
+	}
+	pipeline, err := r.GetPipeline(pipelineId)
+	if err != nil {
+		return "", util.Wrapf(err, "Failed to resolve namespace from pipeline %v", pipelineId)
+	}
+	// An empty stored namespace is not an explicit Kubernetes namespace. Let the
+	// experiment namespace resolve the run instead of defaulting to the API pod namespace.
+	return pipeline.Namespace, nil
+}
+
+// ApplyExecutionNamespace inherits a stored pipeline's namespace and rejects an explicit conflict.
+func (r *ResourceManager) ApplyExecutionNamespace(currentNamespace string, pipelineSpec model.PipelineSpec, recurringRunId string) (string, error) {
+	resolvedNamespace, err := r.ResolveExecutionNamespace(pipelineSpec, recurringRunId)
+	if err != nil {
+		return "", err
+	}
+	if resolvedNamespace == "" {
+		return currentNamespace, nil
+	}
+	if !r.IsEmptyNamespace(currentNamespace) && r.executionNamespace(currentNamespace) != resolvedNamespace {
+		return "", util.NewInvalidInputError("Namespace '%v' does not match parent pipeline namespace '%v'", currentNamespace, resolvedNamespace)
+	}
+	return resolvedNamespace, nil
+}
+
+func (r *ResourceManager) executionNamespace(namespace string) string {
+	if r.IsEmptyNamespace(namespace) {
+		return common.GetPodNamespace()
+	}
+	return namespace
+}
+
 // Checks if the namespace is empty or equal to `-`.
 func (r *ResourceManager) IsEmptyNamespace(namespace string) bool {
 	if namespace == "" || namespace == model.NoNamespace {
@@ -2041,13 +2171,13 @@ func (r *ResourceManager) IsEmptyNamespace(namespace string) bool {
 	return false
 }
 
-// Replaces the namespace to a default value for single-user mode.
+// Normalizes the no-namespace sentinel. Explicit namespaces remain meaningful in both
+// single-user and multi-user modes so resources can be scheduled with their parent pipeline.
 func (r *ResourceManager) ReplaceNamespace(namespace string) string {
-	if common.IsMultiUserMode() {
-		return namespace
-	} else {
+	if namespace == model.NoNamespace {
 		return ""
 	}
+	return namespace
 }
 
 // Validates that the provided experiment belongs to the namespace. Returns error otherwise.
@@ -2094,11 +2224,36 @@ func (r *ResourceManager) GetValidExperimentNamespacePair(experimentId string, n
 		if err != nil {
 			return "", "", util.Wrapf(err, "Specify experiment id or check if the default experiment exists in namespace %v", namespace)
 		}
-		// Create the default experiment if it is missing
+		// Create the global default experiment if it is missing.
 		if defExpId == "" {
 			defExpId, err = r.CreateDefaultExperiment(namespace)
 			if err != nil {
 				return "", "", util.Wrapf(err, "Experiment id is empty. Failed to create a new default experiment in namespace %v", namespace)
+			}
+		}
+		// A single global default experiment may belong to a different namespace. For a
+		// namespaced pipeline, use a namespace-local Default experiment without changing
+		// the global default pointer.
+		if !r.IsEmptyNamespace(namespace) {
+			defaultExperiment, getErr := r.GetExperiment(defExpId)
+			if getErr != nil {
+				return "", "", util.Wrapf(getErr, "Failed to fetch default experiment %v", defExpId)
+			}
+			if r.executionNamespace(defaultExperiment.Namespace) != r.executionNamespace(namespace) {
+				localDefaultName := fmt.Sprintf("Default-%s", namespace)
+				defaultExperiment, getErr = r.experimentStore.GetExperimentByNameNamespace(localDefaultName, namespace)
+				if getErr != nil || defaultExperiment == nil {
+					defaultExperiment, getErr = r.CreateExperiment(&model.Experiment{
+						Name:         localDefaultName,
+						Description:  "All runs created without specifying an experiment will be grouped here.",
+						Namespace:    namespace,
+						StorageState: model.StorageStateAvailable,
+					})
+					if getErr != nil {
+						return "", "", util.Wrapf(getErr, "Failed to create default experiment in namespace %v", namespace)
+					}
+				}
+				defExpId = defaultExperiment.UUID
 			}
 		}
 		experimentId = defExpId

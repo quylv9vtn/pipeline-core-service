@@ -132,7 +132,7 @@ func (c *PipelineUploadClient) Upload(parameters *params.UploadPipelineParams) (
 			"Failed to upload pipeline")
 	}
 
-	return response.Payload, nil
+	return response.Payload.Pipeline, nil
 }
 
 // UploadPipelineVersion uploads pipeline version from local file.

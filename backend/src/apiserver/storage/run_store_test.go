@@ -386,6 +386,25 @@ func TestListRuns_TotalSizeWithNoFilter(t *testing.T) {
 	assert.Equal(t, 3, total_size)
 }
 
+func TestListRuns_ByRecurringRun(t *testing.T) {
+	db, runStore := initializeRunStore()
+	defer db.Close()
+
+	_, err := db.Exec("UPDATE run_details SET JobUUID = ? WHERE UUID IN (?, ?)", "job-1", "1", "2")
+	assert.NoError(t, err)
+	_, err = db.Exec("UPDATE run_details SET JobUUID = ? WHERE UUID = ?", "job-2", "3")
+	assert.NoError(t, err)
+
+	opts, err := list.NewOptions(&model.Run{}, 10, "created_at asc", nil)
+	assert.NoError(t, err)
+	runs, totalSize, nextPageToken, err := runStore.ListRuns(
+		&model.FilterContext{ReferenceKey: &model.ReferenceKey{Type: model.JobResourceType, ID: "job-1"}}, opts)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, totalSize)
+	assert.Empty(t, nextPageToken)
+	assert.Equal(t, []string{"1", "2"}, []string{runs[0].UUID, runs[1].UUID})
+}
+
 func TestListRuns_TotalSizeWithFilter(t *testing.T) {
 	db, runStore := initializeRunStore()
 	defer db.Close()

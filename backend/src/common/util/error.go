@@ -185,6 +185,14 @@ func NewInvalidInputError(messageFormat string, a ...interface{}) *UserError {
 	return newUserError(errors.Errorf("Invalid input error: %v", message), message, codes.InvalidArgument)
 }
 
+func NewResourceExhaustedError(err error, externalMessageFormat string, a ...interface{}) *UserError {
+	externalMessage := fmt.Sprintf(externalMessageFormat, a...)
+	return newUserError(
+		errors.Wrapf(err, "ResourceExhaustedError: %v", externalMessage),
+		externalMessage,
+		codes.ResourceExhausted)
+}
+
 func NewInvalidInputErrorWithDetails(err error, externalMessage string) *UserError {
 	return newUserError(
 		errors.Wrapf(err, "InvalidInputError: %v", externalMessage),

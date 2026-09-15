@@ -41,14 +41,14 @@
         "parameters": [
           {
             "name": "page_token",
-            "description": "A page token to request the next page of results. The token is acquried\nfrom the nextPageToken field of the response from the previous\nListExperiments call or can be omitted when fetching the first page.",
+            "description": "A page token to request the next page of results. The token is acquried\r\nfrom the nextPageToken field of the response from the previous\r\nListExperiments call or can be omitted when fetching the first page.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The number of experiments to be listed per page. If there are more\nexperiments than this number, the response message will contain a\nnextPageToken field you can use to fetch the next page.",
+            "description": "The number of experiments to be listed per page. If there are more\r\nexperiments than this number, the response message will contain a\r\nnextPageToken field you can use to fetch the next page.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -56,14 +56,14 @@
           },
           {
             "name": "sort_by",
-            "description": "Can be format of \"field_name\", \"field_name asc\" or \"field_name desc\"\nAscending by default.",
+            "description": "Can be format of \"field_name\", \"field_name asc\" or \"field_name desc\"\r\nAscending by default.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
-            "description": "A url-encoded, JSON-serialized Filter protocol buffer (see\n[filter.proto](https://github.com/kubeflow/pipelines/blob/master/backend/api/v2beta1/api/filter.proto)).",
+            "description": "A url-encoded, JSON-serialized Filter protocol buffer (see\r\n[filter.proto](https://github.com/kubeflow/pipelines/blob/master/backend/api/v2beta1/api/filter.proto)).",
             "in": "query",
             "required": false,
             "type": "string"
@@ -145,7 +145,7 @@
         ]
       },
       "delete": {
-        "summary": "Deletes an experiment without deleting the experiment's runs and recurring \nruns. To avoid unexpected behaviors, delete an experiment's runs and recurring \nruns before deleting the experiment.",
+        "summary": "Deletes an experiment without deleting the experiment's runs and recurring \r\nruns. To avoid unexpected behaviors, delete an experiment's runs and recurring \r\nruns before deleting the experiment.",
         "operationId": "ExperimentService_DeleteExperiment",
         "responses": {
           "200": {
@@ -211,7 +211,7 @@
     },
     "/apis/v2beta1/experiments/{experiment_id}:unarchive": {
       "post": {
-        "summary": "Restores an archived experiment. The experiment's archived runs and recurring\nruns will stay archived.",
+        "summary": "Restores an archived experiment. The experiment's archived runs and recurring\r\nruns will stay archived.",
         "operationId": "ExperimentService_UnarchiveExperiment",
         "responses": {
           "200": {
@@ -254,7 +254,7 @@
         },
         "message": {
           "type": "string",
-          "description": "A developer-facing error message, which should be in English. Any\nuser-facing error message should be localized and sent in the\n[google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client."
+          "description": "A developer-facing error message, which should be in English. Any\r\nuser-facing error message should be localized and sent in the\r\n[google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client."
         },
         "details": {
           "type": "array",
@@ -262,10 +262,10 @@
             "type": "object",
             "$ref": "#/definitions/protobufAny"
           },
-          "description": "A list of messages that carry the error details.  There is a common set of\nmessage types for APIs to use."
+          "description": "A list of messages that carry the error details.  There is a common set of\r\nmessage types for APIs to use."
         }
       },
-      "description": "The `Status` type defines a logical error model that is suitable for\ndifferent programming environments, including REST APIs and RPC APIs. It is\nused by [gRPC](https://github.com/grpc). Each `Status` message contains\nthree pieces of data: error code, error message, and error details.\n\nYou can find out more about this error model and how to work with it in the\n[API Design Guide](https://cloud.google.com/apis/design/errors)."
+      "description": "The `Status` type defines a logical error model that is suitable for\r\ndifferent programming environments, including REST APIs and RPC APIs. It is\r\nused by [gRPC](https://github.com/grpc). Each `Status` message contains\r\nthree pieces of data: error code, error message, and error details.\r\n\r\nYou can find out more about this error model and how to work with it in the\r\n[API Design Guide](https://cloud.google.com/apis/design/errors)."
     },
     "protobufAny": {
       "type": "object",
@@ -283,7 +283,7 @@
       "properties": {
         "experiment_id": {
           "type": "string",
-          "description": "Output. Unique experiment ID. Generated by API server."
+          "description": "Optional input. Unique experiment ID. If omitted, the API server generates one."
         },
         "display_name": {
           "type": "string",

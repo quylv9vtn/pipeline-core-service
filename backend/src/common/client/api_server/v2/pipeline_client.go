@@ -136,7 +136,7 @@ func (c *PipelineClient) CreatePipelineAndVersion(parameters *params.PipelineSer
 			fmt.Sprintf("Failed to create pipeline and version '%v'", parameters.Body.Pipeline.DisplayName))
 	}
 
-	return response.Payload, nil
+	return response.Payload.Pipeline, nil
 }
 
 func (c *PipelineClient) Get(parameters *params.PipelineServiceGetPipelineParams) (*model.V2beta1Pipeline,

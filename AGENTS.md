@@ -7,7 +7,7 @@
 
 ### Document metadata
 
-- Last updated: 2026-01-20
+- Last updated: 2026-08-27
 - Scope: KFP master branch (v2 engine), backend (Go), SDK (Python), frontend (React 16)
 
 ### Maintenance (agents and contributors)
@@ -147,6 +147,16 @@ KFP supports two main deployment modes:
 - Includes user isolation, namespace-based access control, and Istio integration
 - Suitable for production environments with multiple users/teams
 
+**Cluster-wide project mode (PostgreSQL):**
+
+- Uses `manifests/kustomize/env/platform-agnostic-postgresql-cluster-wide`.
+- Keeps the standalone API mode while allowing KFP controllers to manage workflows in project namespaces.
+- Project provisioning creates a namespace-local `pipeline-runner` ServiceAccount and RoleBinding, and copies the
+  `mlpipeline-minio-artifact` Secret from the KFP control namespace.
+- The overlay permits namespaces managed by `pipeline-core` to reach the SeaweedFS S3 container port for artifact
+  and archived-log storage, the MLMD gRPC service, and the API/cache service ports required by pipeline drivers.
+- Argo and KFP controllers watch all namespaces; use this mode only on a dedicated pipeline cluster.
+
 ## Local testing
 
 - Python (SDK):
@@ -279,6 +289,11 @@ make -C api python && make -C api golang
 ### 🚫 NEVER EDIT DIRECTLY (Generated files)
 
 The following files are generated; edit their sources and regenerate:
+
+- Backend API protobufs, gRPC gateway, Swagger, and HTTP clients under
+  `backend/api/<version>/{go_client,go_http_client,swagger}`
+  - Sources: `backend/api/<version>/*.proto`
+  - Generate: `make -C backend/api generate API_VERSION=v2beta1`
 
 - `api/v2alpha1/python/kfp/pipeline_spec/pipeline_spec_pb2.py`
   - Source: `api/v2alpha1/pipeline_spec.proto`
@@ -599,3 +614,4 @@ docformatter --check --recursive sdk/python/ --exclude "compiler_test.py"
 - API client generation fails with "Unable to access jarfile swagger-codegen-cli.jar": ensure the JAR is present and use `java -jar <path>/swagger-codegen-cli.jar` from `frontend/`.
 - Frontend fails to start due to Node version mismatch: `nvm use $(cat frontend/.nvmrc)` or `fnm use`.
 - Runtime component imports SDK-only modules: `_KFP_RUNTIME=true` disables many SDK imports; avoid importing SDK-only modules in task code.
+- Backend Go tests on Windows may fail in `runtime/cgo` when GCC lacks 64-bit support; run them in the Linux builder image instead.

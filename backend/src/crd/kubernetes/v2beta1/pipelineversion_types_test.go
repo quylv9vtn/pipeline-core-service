@@ -713,12 +713,13 @@ platforms:
 	}
 
 	pipelineVersion := model.PipelineVersion{
-		UUID:         "version-456",
-		Name:         "hello-world-v1",
-		DisplayName:  "Hello World Pipeline v1",
-		Description:  "A simple hello world pipeline with workspace configuration",
-		PipelineSpec: model.LargeText(pipelineSpecYAML),
-		PipelineId:   "pipeline-123",
+		UUID:             "version-456",
+		Name:             "hello-world-v1",
+		DisplayName:      "Hello World Pipeline v1",
+		Description:      "A simple hello world pipeline with workspace configuration",
+		PipelineSpec:     model.LargeText(pipelineSpecYAML),
+		PipelineId:       "pipeline-123",
+		ResourceEnvelope: `{"requests":{"cpu":"1"},"calculation":"EXACT"}`,
 	}
 
 	// Convert from model to CRD
@@ -730,6 +731,7 @@ platforms:
 	roundTripModel, err := result.ToModel()
 	require.NoError(t, err)
 	assert.NotNil(t, roundTripModel)
+	assert.Equal(t, pipelineVersion.ResourceEnvelope, roundTripModel.ResourceEnvelope)
 
 	// Unmarshal both YAMLs into objects for semantic comparison
 	originalPipelineSpecSplit := strings.Split(pipelineSpecYAML, "\n---\n")

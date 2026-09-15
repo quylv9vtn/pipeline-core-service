@@ -18,6 +18,7 @@ option go_package = "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client
 package kubeflow.pipelines.backend.api.v2beta1;
 
 import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
 import "google/protobuf/empty.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 
@@ -80,7 +81,10 @@ message AuthorizeRequest {
     GET = 2;
     DELETE = 3;
   }
-  string namespace = 1;    // Namespace the resource belongs to.
-  Resources resources = 2; // Resource type asking for authorization.
-  Verb verb = 3;           // Verb on the resource asking for authorization.
+  // Namespace the resource belongs to.
+  string namespace = 1 [(google.api.field_behavior) = REQUIRED];
+  // Resource type asking for authorization.
+  Resources resources = 2 [(google.api.field_behavior) = REQUIRED];
+  // Verb on the resource asking for authorization.
+  Verb verb = 3 [(google.api.field_behavior) = REQUIRED];
 }

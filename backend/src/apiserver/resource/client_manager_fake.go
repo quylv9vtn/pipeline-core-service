@@ -148,6 +148,10 @@ func (f *FakeClientManager) RunStore() storage.RunStoreInterface {
 	return f.runStore
 }
 
+func (f *FakeClientManager) QuotaStore() storage.QuotaStoreInterface {
+	return storage.NewQuotaStore(f.db)
+}
+
 func (f *FakeClientManager) TaskStore() storage.TaskStoreInterface {
 	return f.taskStore
 }

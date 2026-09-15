@@ -53,7 +53,7 @@ PipelineServiceCreatePipelineAndVersionOK describes a response with status code 
 A successful response.
 */
 type PipelineServiceCreatePipelineAndVersionOK struct {
-	Payload *pipeline_model.V2beta1Pipeline
+	Payload *pipeline_model.V2beta1CreatePipelineAndVersionResponse
 }
 
 // IsSuccess returns true when this pipeline service create pipeline and version o k response has a 2xx status code
@@ -96,13 +96,13 @@ func (o *PipelineServiceCreatePipelineAndVersionOK) String() string {
 	return fmt.Sprintf("[POST /apis/v2beta1/pipelines/create][%d] pipelineServiceCreatePipelineAndVersionOK %s", 200, payload)
 }
 
-func (o *PipelineServiceCreatePipelineAndVersionOK) GetPayload() *pipeline_model.V2beta1Pipeline {
+func (o *PipelineServiceCreatePipelineAndVersionOK) GetPayload() *pipeline_model.V2beta1CreatePipelineAndVersionResponse {
 	return o.Payload
 }
 
 func (o *PipelineServiceCreatePipelineAndVersionOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(pipeline_model.V2beta1Pipeline)
+	o.Payload = new(pipeline_model.V2beta1CreatePipelineAndVersionResponse)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

@@ -57,7 +57,6 @@ var LengthSpecs = []ColLenSpec{
 	{Model: &model.Run{}, Field: "UUID", Max: 191},
 	{Model: &model.Run{}, Field: "Namespace", Max: 63},
 	{Model: &model.Run{}, Field: "ExperimentId", Max: 64},
-	{Model: &model.Run{}, Field: "Conditions", Max: 125},
 
 	{Model: &model.RunMetric{}, Field: "RunUUID", Max: 191},
 	{Model: &model.RunMetric{}, Field: "NodeID", Max: 191},

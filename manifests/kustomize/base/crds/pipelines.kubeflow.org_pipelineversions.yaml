@@ -51,6 +51,9 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               pipelineSpecURI:
                 type: string
+              resourceEnvelope:
+                description: ResourceEnvelope is the upload-time peak resource calculation derived from this immutable pipeline version's IR.
+                type: string
               platformSpec:
                 x-kubernetes-preserve-unknown-fields: true
             required:

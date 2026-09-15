@@ -23,7 +23,7 @@ func TestPruneV1Schema(t *testing.T) {
 	statements := []string{
 		`CREATE TABLE pipelines (UUID TEXT PRIMARY KEY, Namespace TEXT, DefaultVersionId TEXT, Parameters TEXT)`,
 		`CREATE TABLE pipeline_versions (UUID TEXT PRIMARY KEY, Parameters TEXT)`,
-		`CREATE TABLE run_details (UUID TEXT PRIMARY KEY, Namespace TEXT, RuntimeParameters TEXT, Parameters TEXT)`,
+		`CREATE TABLE run_details (UUID TEXT PRIMARY KEY, Namespace TEXT, RuntimeParameters TEXT, Parameters TEXT, Conditions TEXT, State TEXT)`,
 		`CREATE TABLE jobs (UUID TEXT PRIMARY KEY, Namespace TEXT, RuntimeParameters TEXT, Parameters TEXT)`,
 		`CREATE TABLE run_metrics (RunUUID TEXT)`,
 		`CREATE TABLE resource_references (ResourceUUID TEXT)`,
@@ -31,6 +31,7 @@ func TestPruneV1Schema(t *testing.T) {
 	for _, statement := range statements {
 		require.NoError(t, db.Exec(statement).Error)
 	}
+	require.NoError(t, db.Exec(`INSERT INTO run_details (UUID, Conditions, State) VALUES ('legacy', 'Succeeded', NULL), ('v2', 'Failed', 'RUNNING')`).Error)
 
 	require.NoError(t, pruneV1Schema(db))
 	require.False(t, db.Migrator().HasTable("run_metrics"))
@@ -39,9 +40,13 @@ func TestPruneV1Schema(t *testing.T) {
 	assertExactColumn(t, db, "pipelines", "Parameters", false)
 	assertExactColumn(t, db, "pipeline_versions", "Parameters", false)
 	assertExactColumn(t, db, "run_details", "Parameters", false)
+	assertExactColumn(t, db, "run_details", "Conditions", false)
 	assertExactColumn(t, db, "jobs", "Parameters", false)
 	assertExactColumn(t, db, "pipelines", "Namespace", true)
 	assertExactColumn(t, db, "run_details", "RuntimeParameters", true)
+	var states []string
+	require.NoError(t, db.Table("run_details").Order("UUID").Pluck("State", &states).Error)
+	require.Equal(t, []string{"SUCCEEDED", "RUNNING"}, states)
 
 	// The migration is intentionally safe to run on every startup.
 	require.NoError(t, pruneV1Schema(db))

@@ -1,0 +1,39 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metadata-grpc-project-access
+spec:
+  podSelector:
+    matchLabels:
+      component: metadata-grpc-server
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          app.kubernetes.io/managed-by: pipeline-core
+    ports:
+    - port: 8080
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ml-pipeline-project-access
+spec:
+  podSelector:
+    matchLabels:
+      app: ml-pipeline
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          app.kubernetes.io/managed-by: pipeline-core
+    ports:
+    - port: 8887
+      protocol: TCP
+    - port: 8888
+      protocol: TCP

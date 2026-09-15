@@ -34,14 +34,21 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RunService_CreateRun_FullMethodName    = "/kubeflow.pipelines.backend.api.v2beta1.RunService/CreateRun"
-	RunService_GetRun_FullMethodName       = "/kubeflow.pipelines.backend.api.v2beta1.RunService/GetRun"
-	RunService_ListRuns_FullMethodName     = "/kubeflow.pipelines.backend.api.v2beta1.RunService/ListRuns"
-	RunService_ArchiveRun_FullMethodName   = "/kubeflow.pipelines.backend.api.v2beta1.RunService/ArchiveRun"
-	RunService_UnarchiveRun_FullMethodName = "/kubeflow.pipelines.backend.api.v2beta1.RunService/UnarchiveRun"
-	RunService_DeleteRun_FullMethodName    = "/kubeflow.pipelines.backend.api.v2beta1.RunService/DeleteRun"
-	RunService_TerminateRun_FullMethodName = "/kubeflow.pipelines.backend.api.v2beta1.RunService/TerminateRun"
-	RunService_RetryRun_FullMethodName     = "/kubeflow.pipelines.backend.api.v2beta1.RunService/RetryRun"
+	RunService_CreateRun_FullMethodName              = "/kubeflow.pipelines.backend.api.v2beta1.RunService/CreateRun"
+	RunService_GetRun_FullMethodName                 = "/kubeflow.pipelines.backend.api.v2beta1.RunService/GetRun"
+	RunService_ListRunExecutions_FullMethodName      = "/kubeflow.pipelines.backend.api.v2beta1.RunService/ListRunExecutions"
+	RunService_GetRunExecution_FullMethodName        = "/kubeflow.pipelines.backend.api.v2beta1.RunService/GetRunExecution"
+	RunService_ListRunArtifacts_FullMethodName       = "/kubeflow.pipelines.backend.api.v2beta1.RunService/ListRunArtifacts"
+	RunService_GetRunLineage_FullMethodName          = "/kubeflow.pipelines.backend.api.v2beta1.RunService/GetRunLineage"
+	RunService_ListRunTasks_FullMethodName           = "/kubeflow.pipelines.backend.api.v2beta1.RunService/ListRunTasks"
+	RunService_GetRunTask_FullMethodName             = "/kubeflow.pipelines.backend.api.v2beta1.RunService/GetRunTask"
+	RunService_ListRuns_FullMethodName               = "/kubeflow.pipelines.backend.api.v2beta1.RunService/ListRuns"
+	RunService_ListRunsByRecurringRun_FullMethodName = "/kubeflow.pipelines.backend.api.v2beta1.RunService/ListRunsByRecurringRun"
+	RunService_ArchiveRun_FullMethodName             = "/kubeflow.pipelines.backend.api.v2beta1.RunService/ArchiveRun"
+	RunService_UnarchiveRun_FullMethodName           = "/kubeflow.pipelines.backend.api.v2beta1.RunService/UnarchiveRun"
+	RunService_DeleteRun_FullMethodName              = "/kubeflow.pipelines.backend.api.v2beta1.RunService/DeleteRun"
+	RunService_TerminateRun_FullMethodName           = "/kubeflow.pipelines.backend.api.v2beta1.RunService/TerminateRun"
+	RunService_RetryRun_FullMethodName               = "/kubeflow.pipelines.backend.api.v2beta1.RunService/RetryRun"
 )
 
 // RunServiceClient is the client API for RunService service.
@@ -53,9 +60,26 @@ type RunServiceClient interface {
 	CreateRun(ctx context.Context, in *CreateRunRequest, opts ...grpc.CallOption) (*Run, error)
 	// Finds a specific run by ID.
 	GetRun(ctx context.Context, in *GetRunRequest, opts ...grpc.CallOption) (*Run, error)
+	// Lists the ML Metadata executions corresponding to tasks in a run.
+	ListRunExecutions(ctx context.Context, in *ListRunExecutionsRequest, opts ...grpc.CallOption) (*ListRunExecutionsResponse, error)
+	// Returns one ML Metadata execution after verifying that it belongs to the
+	// requested run.
+	GetRunExecution(ctx context.Context, in *GetRunExecutionRequest, opts ...grpc.CallOption) (*RunExecution, error)
+	// Lists artifacts consumed or produced by tasks in a run. Artifact metadata
+	// is read directly from ML Metadata after authorizing access to the run.
+	ListRunArtifacts(ctx context.Context, in *ListRunArtifactsRequest, opts ...grpc.CallOption) (*ListRunArtifactsResponse, error)
+	// Returns the task-to-artifact lineage graph for a run.
+	GetRunLineage(ctx context.Context, in *GetRunLineageRequest, opts ...grpc.CallOption) (*RunLineage, error)
+	// Lists the pipeline tasks belonging to a run. Execution IDs and pod names
+	// are enriched from ML Metadata when persistence data is incomplete.
+	ListRunTasks(ctx context.Context, in *ListRunTasksRequest, opts ...grpc.CallOption) (*ListRunTasksResponse, error)
+	// Returns one task and its corresponding ML Metadata execution and artifacts.
+	GetRunTask(ctx context.Context, in *GetRunTaskRequest, opts ...grpc.CallOption) (*RunTask, error)
 	// Finds all runs in an experiment given by experiment ID.
 	// If experiment id is not specified, finds all runs across all experiments.
 	ListRuns(ctx context.Context, in *ListRunsRequest, opts ...grpc.CallOption) (*ListRunsResponse, error)
+	// Finds all runs created by a recurring run (job).
+	ListRunsByRecurringRun(ctx context.Context, in *ListRunsByRecurringRunRequest, opts ...grpc.CallOption) (*ListRunsResponse, error)
 	// Archives a run in an experiment given by run ID and experiment ID.
 	ArchiveRun(ctx context.Context, in *ArchiveRunRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Restores an archived run in an experiment given by run ID and experiment ID.
@@ -96,10 +120,80 @@ func (c *runServiceClient) GetRun(ctx context.Context, in *GetRunRequest, opts .
 	return out, nil
 }
 
+func (c *runServiceClient) ListRunExecutions(ctx context.Context, in *ListRunExecutionsRequest, opts ...grpc.CallOption) (*ListRunExecutionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListRunExecutionsResponse)
+	err := c.cc.Invoke(ctx, RunService_ListRunExecutions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *runServiceClient) GetRunExecution(ctx context.Context, in *GetRunExecutionRequest, opts ...grpc.CallOption) (*RunExecution, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunExecution)
+	err := c.cc.Invoke(ctx, RunService_GetRunExecution_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *runServiceClient) ListRunArtifacts(ctx context.Context, in *ListRunArtifactsRequest, opts ...grpc.CallOption) (*ListRunArtifactsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListRunArtifactsResponse)
+	err := c.cc.Invoke(ctx, RunService_ListRunArtifacts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *runServiceClient) GetRunLineage(ctx context.Context, in *GetRunLineageRequest, opts ...grpc.CallOption) (*RunLineage, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunLineage)
+	err := c.cc.Invoke(ctx, RunService_GetRunLineage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *runServiceClient) ListRunTasks(ctx context.Context, in *ListRunTasksRequest, opts ...grpc.CallOption) (*ListRunTasksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListRunTasksResponse)
+	err := c.cc.Invoke(ctx, RunService_ListRunTasks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *runServiceClient) GetRunTask(ctx context.Context, in *GetRunTaskRequest, opts ...grpc.CallOption) (*RunTask, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunTask)
+	err := c.cc.Invoke(ctx, RunService_GetRunTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *runServiceClient) ListRuns(ctx context.Context, in *ListRunsRequest, opts ...grpc.CallOption) (*ListRunsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListRunsResponse)
 	err := c.cc.Invoke(ctx, RunService_ListRuns_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *runServiceClient) ListRunsByRecurringRun(ctx context.Context, in *ListRunsByRecurringRunRequest, opts ...grpc.CallOption) (*ListRunsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListRunsResponse)
+	err := c.cc.Invoke(ctx, RunService_ListRunsByRecurringRun_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -165,9 +259,26 @@ type RunServiceServer interface {
 	CreateRun(context.Context, *CreateRunRequest) (*Run, error)
 	// Finds a specific run by ID.
 	GetRun(context.Context, *GetRunRequest) (*Run, error)
+	// Lists the ML Metadata executions corresponding to tasks in a run.
+	ListRunExecutions(context.Context, *ListRunExecutionsRequest) (*ListRunExecutionsResponse, error)
+	// Returns one ML Metadata execution after verifying that it belongs to the
+	// requested run.
+	GetRunExecution(context.Context, *GetRunExecutionRequest) (*RunExecution, error)
+	// Lists artifacts consumed or produced by tasks in a run. Artifact metadata
+	// is read directly from ML Metadata after authorizing access to the run.
+	ListRunArtifacts(context.Context, *ListRunArtifactsRequest) (*ListRunArtifactsResponse, error)
+	// Returns the task-to-artifact lineage graph for a run.
+	GetRunLineage(context.Context, *GetRunLineageRequest) (*RunLineage, error)
+	// Lists the pipeline tasks belonging to a run. Execution IDs and pod names
+	// are enriched from ML Metadata when persistence data is incomplete.
+	ListRunTasks(context.Context, *ListRunTasksRequest) (*ListRunTasksResponse, error)
+	// Returns one task and its corresponding ML Metadata execution and artifacts.
+	GetRunTask(context.Context, *GetRunTaskRequest) (*RunTask, error)
 	// Finds all runs in an experiment given by experiment ID.
 	// If experiment id is not specified, finds all runs across all experiments.
 	ListRuns(context.Context, *ListRunsRequest) (*ListRunsResponse, error)
+	// Finds all runs created by a recurring run (job).
+	ListRunsByRecurringRun(context.Context, *ListRunsByRecurringRunRequest) (*ListRunsResponse, error)
 	// Archives a run in an experiment given by run ID and experiment ID.
 	ArchiveRun(context.Context, *ArchiveRunRequest) (*emptypb.Empty, error)
 	// Restores an archived run in an experiment given by run ID and experiment ID.
@@ -194,8 +305,29 @@ func (UnimplementedRunServiceServer) CreateRun(context.Context, *CreateRunReques
 func (UnimplementedRunServiceServer) GetRun(context.Context, *GetRunRequest) (*Run, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRun not implemented")
 }
+func (UnimplementedRunServiceServer) ListRunExecutions(context.Context, *ListRunExecutionsRequest) (*ListRunExecutionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListRunExecutions not implemented")
+}
+func (UnimplementedRunServiceServer) GetRunExecution(context.Context, *GetRunExecutionRequest) (*RunExecution, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRunExecution not implemented")
+}
+func (UnimplementedRunServiceServer) ListRunArtifacts(context.Context, *ListRunArtifactsRequest) (*ListRunArtifactsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListRunArtifacts not implemented")
+}
+func (UnimplementedRunServiceServer) GetRunLineage(context.Context, *GetRunLineageRequest) (*RunLineage, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRunLineage not implemented")
+}
+func (UnimplementedRunServiceServer) ListRunTasks(context.Context, *ListRunTasksRequest) (*ListRunTasksResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListRunTasks not implemented")
+}
+func (UnimplementedRunServiceServer) GetRunTask(context.Context, *GetRunTaskRequest) (*RunTask, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRunTask not implemented")
+}
 func (UnimplementedRunServiceServer) ListRuns(context.Context, *ListRunsRequest) (*ListRunsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListRuns not implemented")
+}
+func (UnimplementedRunServiceServer) ListRunsByRecurringRun(context.Context, *ListRunsByRecurringRunRequest) (*ListRunsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListRunsByRecurringRun not implemented")
 }
 func (UnimplementedRunServiceServer) ArchiveRun(context.Context, *ArchiveRunRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ArchiveRun not implemented")
@@ -269,6 +401,114 @@ func _RunService_GetRun_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RunService_ListRunExecutions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRunExecutionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RunServiceServer).ListRunExecutions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RunService_ListRunExecutions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RunServiceServer).ListRunExecutions(ctx, req.(*ListRunExecutionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RunService_GetRunExecution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRunExecutionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RunServiceServer).GetRunExecution(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RunService_GetRunExecution_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RunServiceServer).GetRunExecution(ctx, req.(*GetRunExecutionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RunService_ListRunArtifacts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRunArtifactsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RunServiceServer).ListRunArtifacts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RunService_ListRunArtifacts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RunServiceServer).ListRunArtifacts(ctx, req.(*ListRunArtifactsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RunService_GetRunLineage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRunLineageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RunServiceServer).GetRunLineage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RunService_GetRunLineage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RunServiceServer).GetRunLineage(ctx, req.(*GetRunLineageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RunService_ListRunTasks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRunTasksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RunServiceServer).ListRunTasks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RunService_ListRunTasks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RunServiceServer).ListRunTasks(ctx, req.(*ListRunTasksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RunService_GetRunTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRunTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RunServiceServer).GetRunTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RunService_GetRunTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RunServiceServer).GetRunTask(ctx, req.(*GetRunTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _RunService_ListRuns_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListRunsRequest)
 	if err := dec(in); err != nil {
@@ -283,6 +523,24 @@ func _RunService_ListRuns_Handler(srv interface{}, ctx context.Context, dec func
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RunServiceServer).ListRuns(ctx, req.(*ListRunsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RunService_ListRunsByRecurringRun_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRunsByRecurringRunRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RunServiceServer).ListRunsByRecurringRun(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RunService_ListRunsByRecurringRun_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RunServiceServer).ListRunsByRecurringRun(ctx, req.(*ListRunsByRecurringRunRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -393,8 +651,36 @@ var RunService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RunService_GetRun_Handler,
 		},
 		{
+			MethodName: "ListRunExecutions",
+			Handler:    _RunService_ListRunExecutions_Handler,
+		},
+		{
+			MethodName: "GetRunExecution",
+			Handler:    _RunService_GetRunExecution_Handler,
+		},
+		{
+			MethodName: "ListRunArtifacts",
+			Handler:    _RunService_ListRunArtifacts_Handler,
+		},
+		{
+			MethodName: "GetRunLineage",
+			Handler:    _RunService_GetRunLineage_Handler,
+		},
+		{
+			MethodName: "ListRunTasks",
+			Handler:    _RunService_ListRunTasks_Handler,
+		},
+		{
+			MethodName: "GetRunTask",
+			Handler:    _RunService_GetRunTask_Handler,
+		},
+		{
 			MethodName: "ListRuns",
 			Handler:    _RunService_ListRuns_Handler,
+		},
+		{
+			MethodName: "ListRunsByRecurringRun",
+			Handler:    _RunService_ListRunsByRecurringRun_Handler,
 		},
 		{
 			MethodName: "ArchiveRun",

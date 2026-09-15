@@ -50,10 +50,10 @@ func NewUploadPipelineOK() *UploadPipelineOK {
 /*
 UploadPipelineOK describes a response with status code 200, with default header values.
 
-UploadPipelineOK upload pipeline o k
+The created pipeline and initial pipeline version.
 */
 type UploadPipelineOK struct {
-	Payload *pipeline_upload_model.V2beta1Pipeline
+	Payload *pipeline_upload_model.V2beta1CreatePipelineAndVersionResponse
 }
 
 // IsSuccess returns true when this upload pipeline o k response has a 2xx status code
@@ -96,13 +96,13 @@ func (o *UploadPipelineOK) String() string {
 	return fmt.Sprintf("[POST /apis/v2beta1/pipelines/upload][%d] uploadPipelineOK %s", 200, payload)
 }
 
-func (o *UploadPipelineOK) GetPayload() *pipeline_upload_model.V2beta1Pipeline {
+func (o *UploadPipelineOK) GetPayload() *pipeline_upload_model.V2beta1CreatePipelineAndVersionResponse {
 	return o.Payload
 }
 
 func (o *UploadPipelineOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(pipeline_upload_model.V2beta1Pipeline)
+	o.Payload = new(pipeline_upload_model.V2beta1CreatePipelineAndVersionResponse)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
@@ -122,7 +122,7 @@ func NewUploadPipelineDefault(code int) *UploadPipelineDefault {
 /*
 UploadPipelineDefault describes a response with status code -1, with default header values.
 
-UploadPipelineDefault upload pipeline default
+The upload failed.
 */
 type UploadPipelineDefault struct {
 	_statusCode int

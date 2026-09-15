@@ -853,7 +853,6 @@ func TestPipelineServer_CreatePipelineAndVersion_v2(t *testing.T) {
 				Name:           "User's pipeline 1",
 				DisplayName:    "User's pipeline 1",
 				Description:    "Pipeline built by a user",
-				Parameters:     "[{\"name\":\"param1\",\"value\":\"hello\"},{\"name\":\"param2\"}]",
 				Status:         model.PipelineVersionReady,
 			},
 			false,
@@ -887,7 +886,6 @@ func TestPipelineServer_CreatePipelineAndVersion_v2(t *testing.T) {
 				PipelineId:     DefaultFakeUUID,
 				Name:           "User's pipeline 1",
 				DisplayName:    "User's pipeline 1",
-				Parameters:     "[]",
 				Description:    "Pipeline built by a user",
 				Status:         model.PipelineVersionReady,
 			},
@@ -922,7 +920,6 @@ func TestPipelineServer_CreatePipelineAndVersion_v2(t *testing.T) {
 				PipelineId:     DefaultFakeUUID,
 				Name:           "User's pipeline 1",
 				DisplayName:    "User's pipeline 1",
-				Parameters:     "[{\"name\":\"param1\",\"value\":\"hello\"},{\"name\":\"param2\"}]",
 				Description:    "Pipeline built by a user",
 				Status:         model.PipelineVersionReady,
 			},
@@ -962,8 +959,11 @@ func TestPipelineServer_CreatePipelineAndVersion_v2(t *testing.T) {
 				assert.Contains(t, err.Error(), tt.errMsg)
 			} else {
 				assert.Nil(t, err)
-				assert.Equal(t, tt.want, got)
-				pv, err := resourceManager.GetLatestPipelineVersion(got.GetPipelineId())
+				assert.Equal(t, tt.want, got.GetPipeline())
+				assert.Equal(t, tt.wantPv.UUID, got.GetPipelineVersion().GetPipelineVersionId())
+				assert.Equal(t, tt.wantPv.PipelineId, got.GetPipelineVersion().GetPipelineId())
+				assert.Equal(t, tt.wantPv.Name, got.GetPipelineVersion().GetName())
+				pv, err := resourceManager.GetLatestPipelineVersion(got.GetPipeline().GetPipelineId())
 				assert.Nil(t, err)
 				assert.NotEmpty(t, pv.PipelineSpec)
 				assert.NotEmpty(t, pv.PipelineSpecURI)

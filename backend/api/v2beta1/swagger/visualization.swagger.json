@@ -70,7 +70,7 @@
         },
         "message": {
           "type": "string",
-          "description": "A developer-facing error message, which should be in English. Any\nuser-facing error message should be localized and sent in the\n[google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client."
+          "description": "A developer-facing error message, which should be in English. Any\r\nuser-facing error message should be localized and sent in the\r\n[google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client."
         },
         "details": {
           "type": "array",
@@ -78,10 +78,10 @@
             "type": "object",
             "$ref": "#/definitions/protobufAny"
           },
-          "description": "A list of messages that carry the error details.  There is a common set of\nmessage types for APIs to use."
+          "description": "A list of messages that carry the error details.  There is a common set of\r\nmessage types for APIs to use."
         }
       },
-      "description": "The `Status` type defines a logical error model that is suitable for\ndifferent programming environments, including REST APIs and RPC APIs. It is\nused by [gRPC](https://github.com/grpc). Each `Status` message contains\nthree pieces of data: error code, error message, and error details.\n\nYou can find out more about this error model and how to work with it in the\n[API Design Guide](https://cloud.google.com/apis/design/errors)."
+      "description": "The `Status` type defines a logical error model that is suitable for\r\ndifferent programming environments, including REST APIs and RPC APIs. It is\r\nused by [gRPC](https://github.com/grpc). Each `Status` message contains\r\nthree pieces of data: error code, error message, and error details.\r\n\r\nYou can find out more about this error model and how to work with it in the\r\n[API Design Guide](https://cloud.google.com/apis/design/errors)."
     },
     "protobufAny": {
       "type": "object",
@@ -102,11 +102,11 @@
         },
         "source": {
           "type": "string",
-          "description": "Path pattern of input data to be used during generation of visualizations.\nThis is required when creating the pipeline through CreateVisualization\nAPI."
+          "description": "Path pattern of input data to be used during generation of visualizations.\r\nThis is required when creating the pipeline through CreateVisualization\r\nAPI."
         },
         "arguments": {
           "type": "string",
-          "description": "Variables to be used during generation of a visualization.\nThis should be provided as a JSON string.\nThis is required when creating the pipeline through CreateVisualization\nAPI."
+          "description": "Variables to be used during generation of a visualization.\r\nThis should be provided as a JSON string.\r\nThis is required when creating the pipeline through CreateVisualization\r\nAPI."
         },
         "html": {
           "type": "string",
@@ -114,7 +114,7 @@
         },
         "error": {
           "type": "string",
-          "description": "In case any error happens when generating visualizations, only\nvisualization ID and the error message are returned. Client has the\nflexibility of choosing how to handle the error."
+          "description": "In case any error happens when generating visualizations, only\r\nvisualization ID and the error message are returned. Client has the\r\nflexibility of choosing how to handle the error."
         }
       }
     },
@@ -128,7 +128,7 @@
         "CUSTOM"
       ],
       "default": "ROC_CURVE",
-      "description": "Type of visualization to be generated.\nThis is required when creating the pipeline through CreateVisualization\nAPI."
+      "description": "Type of visualization to be generated.\r\nThis is required when creating the pipeline through CreateVisualization\r\nAPI."
     }
   },
   "securityDefinitions": {

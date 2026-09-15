@@ -40,7 +40,6 @@ var runColumns = []string{
 	"CreatedAtInSec",
 	"ScheduledAtInSec",
 	"FinishedAtInSec",
-	"Conditions",
 	"PipelineId",
 	"PipelineVersionId",
 	"PipelineName",
@@ -175,6 +174,11 @@ func (s *RunStore) buildSelectRunsQuery(selectCount bool, opts *list.Options,
 	} else if refKey != nil && refKey.Type == model.NamespaceResourceType && (refKey.ID != "" || common.IsMultiUserMode()) {
 		filteredSelectBuilder, err = list.FilterOnNamespace("run_details", runColumns,
 			selectCount, refKey.ID)
+	} else if refKey != nil && refKey.Type == model.JobResourceType && refKey.ID != "" {
+		filteredSelectBuilder = sq.Select(runColumns...).From("run_details").Where(sq.Eq{"JobUUID": refKey.ID})
+		if selectCount {
+			filteredSelectBuilder = sq.Select("count(*)").From("run_details").Where(sq.Eq{"JobUUID": refKey.ID})
+		}
 	} else if refKey == nil || (refKey.ID == "" && !common.IsMultiUserMode()) {
 		filteredSelectBuilder = sq.Select(runColumns...).From("run_details")
 		if selectCount {
@@ -252,14 +256,17 @@ func (s *RunStore) addTasks(filteredSelectBuilder sq.SelectBuilder) sq.SelectBui
 	return sq.
 		Select(columnsAfterJoiningTasks...).
 		FromSelect(filteredSelectBuilder, "rd").
-		LeftJoin("tasks ON rd.UUID=tasks.RunUUID").
+		// Only expose the task columns required by this query. In particular,
+		// hiding tasks.UUID keeps the Run pagination key UUID unambiguous when
+		// the outer query reapplies sorting after the join.
+		LeftJoin("(SELECT RunUUID, Payload FROM tasks) AS tasks ON rd.UUID=tasks.RunUUID").
 		GroupBy(rdGroupBy...)
 }
 
 func (s *RunStore) scanRowsToRuns(rows *sql.Rows) ([]*model.Run, error) {
 	var runs []*model.Run
 	for rows.Next() {
-		var uuid, experimentUUID, displayName, name, storageState, namespace, serviceAccount, conditions, description, pipelineId,
+		var uuid, experimentUUID, displayName, name, storageState, namespace, serviceAccount, description, pipelineId,
 			pipelineName, pipelineSpecManifest, workflowSpecManifest, pipelineRuntimeManifest,
 			workflowRuntimeManifest string
 		var createdAtInSec, scheduledAtInSec, finishedAtInSec, pipelineContextId, pipelineRunContextId sql.NullInt64
@@ -276,7 +283,6 @@ func (s *RunStore) scanRowsToRuns(rows *sql.Rows) ([]*model.Run, error) {
 			&createdAtInSec,
 			&scheduledAtInSec,
 			&finishedAtInSec,
-			&conditions,
 			&pipelineId,
 			&pipelineVersionId,
 			&pipelineName,
@@ -322,7 +328,6 @@ func (s *RunStore) scanRowsToRuns(rows *sql.Rows) ([]*model.Run, error) {
 				CreatedAtInSec:          createdAtInSec.Int64,
 				ScheduledAtInSec:        scheduledAtInSec.Int64,
 				FinishedAtInSec:         finishedAtInSec.Int64,
-				Conditions:              conditions,
 				State:                   model.RuntimeState(state.String),
 				PipelineRuntimeManifest: model.LargeText(pipelineRuntimeManifest),
 				WorkflowRuntimeManifest: model.LargeText(workflowRuntimeManifest),
@@ -405,7 +410,6 @@ func (s *RunStore) CreateRun(r *model.Run) (*model.Run, error) {
 			"CreatedAtInSec":          r.RunDetails.CreatedAtInSec,
 			"ScheduledAtInSec":        r.RunDetails.ScheduledAtInSec,
 			"FinishedAtInSec":         r.RunDetails.FinishedAtInSec,
-			"Conditions":              r.RunDetails.Conditions,
 			"WorkflowRuntimeManifest": r.RunDetails.WorkflowRuntimeManifest,
 			"PipelineRuntimeManifest": r.RunDetails.PipelineRuntimeManifest,
 			"PipelineId":              r.PipelineSpec.PipelineId,
@@ -462,7 +466,6 @@ func (s *RunStore) UpdateRun(run *model.Run) error {
 	sql, args, err := sq.
 		Update("run_details").
 		SetMap(sq.Eq{
-			"Conditions":              run.Conditions,
 			"State":                   run.State.ToString(),
 			"StateHistory":            stateHistoryString,
 			"FinishedAtInSec":         run.FinishedAtInSec,
@@ -581,9 +584,8 @@ func (s *RunStore) TerminateRun(runId string) error {
 	// TODO(gkcalat): append CANCELLING to StateHistory
 	result, err := s.db.Exec(`
 		UPDATE run_details
-		SET Conditions = ?, State = ?
+		SET State = ?
 		WHERE UUID = ? AND (State = ? OR State = ? OR State = ? OR State = ?)`,
-		string(model.RuntimeStateCancelling.ToV1()),
 		model.RuntimeStateCancelling.ToString(),
 		runId,
 		model.RuntimeStatePaused.ToString(),

@@ -62,7 +62,21 @@ type ClientService interface {
 
 	RunServiceGetRun(params *RunServiceGetRunParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceGetRunOK, error)
 
+	RunServiceGetRunExecution(params *RunServiceGetRunExecutionParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceGetRunExecutionOK, error)
+
+	RunServiceGetRunLineage(params *RunServiceGetRunLineageParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceGetRunLineageOK, error)
+
+	RunServiceGetRunTask(params *RunServiceGetRunTaskParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceGetRunTaskOK, error)
+
+	RunServiceListRunArtifacts(params *RunServiceListRunArtifactsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceListRunArtifactsOK, error)
+
+	RunServiceListRunExecutions(params *RunServiceListRunExecutionsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceListRunExecutionsOK, error)
+
+	RunServiceListRunTasks(params *RunServiceListRunTasksParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceListRunTasksOK, error)
+
 	RunServiceListRuns(params *RunServiceListRunsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceListRunsOK, error)
+
+	RunServiceListRunsByRecurringRun(params *RunServiceListRunsByRecurringRunParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceListRunsByRecurringRunOK, error)
 
 	RunServiceRetryRun(params *RunServiceRetryRunParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceRetryRunOK, error)
 
@@ -226,6 +240,234 @@ func (a *Client) RunServiceGetRun(params *RunServiceGetRunParams, authInfo runti
 }
 
 /*
+RunServiceGetRunExecution returns one m l metadata execution after verifying that it belongs to the requested run
+*/
+func (a *Client) RunServiceGetRunExecution(params *RunServiceGetRunExecutionParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceGetRunExecutionOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewRunServiceGetRunExecutionParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "RunService_GetRunExecution",
+		Method:             "GET",
+		PathPattern:        "/apis/v2beta1/runs/{run_id}/executions/{execution_id}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &RunServiceGetRunExecutionReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*RunServiceGetRunExecutionOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*RunServiceGetRunExecutionDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
+RunServiceGetRunLineage returns the task to artifact lineage graph for a run
+*/
+func (a *Client) RunServiceGetRunLineage(params *RunServiceGetRunLineageParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceGetRunLineageOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewRunServiceGetRunLineageParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "RunService_GetRunLineage",
+		Method:             "GET",
+		PathPattern:        "/apis/v2beta1/runs/{run_id}/lineage",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &RunServiceGetRunLineageReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*RunServiceGetRunLineageOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*RunServiceGetRunLineageDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
+RunServiceGetRunTask returns one task and its corresponding m l metadata execution and artifacts
+*/
+func (a *Client) RunServiceGetRunTask(params *RunServiceGetRunTaskParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceGetRunTaskOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewRunServiceGetRunTaskParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "RunService_GetRunTask",
+		Method:             "GET",
+		PathPattern:        "/apis/v2beta1/runs/{run_id}/tasks/{task_id}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &RunServiceGetRunTaskReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*RunServiceGetRunTaskOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*RunServiceGetRunTaskDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
+RunServiceListRunArtifacts lists artifacts consumed or produced by tasks in a run artifact metadata is read directly from m l metadata after authorizing access to the run
+*/
+func (a *Client) RunServiceListRunArtifacts(params *RunServiceListRunArtifactsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceListRunArtifactsOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewRunServiceListRunArtifactsParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "RunService_ListRunArtifacts",
+		Method:             "GET",
+		PathPattern:        "/apis/v2beta1/runs/{run_id}/artifacts",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &RunServiceListRunArtifactsReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*RunServiceListRunArtifactsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*RunServiceListRunArtifactsDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
+RunServiceListRunExecutions lists the m l metadata executions corresponding to tasks in a run
+*/
+func (a *Client) RunServiceListRunExecutions(params *RunServiceListRunExecutionsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceListRunExecutionsOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewRunServiceListRunExecutionsParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "RunService_ListRunExecutions",
+		Method:             "GET",
+		PathPattern:        "/apis/v2beta1/runs/{run_id}/executions",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &RunServiceListRunExecutionsReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*RunServiceListRunExecutionsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*RunServiceListRunExecutionsDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
+RunServiceListRunTasks lists the pipeline tasks belonging to a run execution i ds and pod names are enriched from m l metadata when persistence data is incomplete
+*/
+func (a *Client) RunServiceListRunTasks(params *RunServiceListRunTasksParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceListRunTasksOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewRunServiceListRunTasksParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "RunService_ListRunTasks",
+		Method:             "GET",
+		PathPattern:        "/apis/v2beta1/runs/{run_id}/tasks",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &RunServiceListRunTasksReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*RunServiceListRunTasksOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*RunServiceListRunTasksDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
 RunServiceListRuns finds all runs in an experiment given by experiment ID if experiment id is not specified finds all runs across all experiments
 */
 func (a *Client) RunServiceListRuns(params *RunServiceListRunsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceListRunsOK, error) {
@@ -260,6 +502,44 @@ func (a *Client) RunServiceListRuns(params *RunServiceListRunsParams, authInfo r
 	}
 	// unexpected success response
 	unexpectedSuccess := result.(*RunServiceListRunsDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
+RunServiceListRunsByRecurringRun finds all runs created by a recurring run job
+*/
+func (a *Client) RunServiceListRunsByRecurringRun(params *RunServiceListRunsByRecurringRunParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RunServiceListRunsByRecurringRunOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewRunServiceListRunsByRecurringRunParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "RunService_ListRunsByRecurringRun",
+		Method:             "GET",
+		PathPattern:        "/apis/v2beta1/recurringruns/{recurring_run_id}/runs",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &RunServiceListRunsByRecurringRunReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*RunServiceListRunsByRecurringRunOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*RunServiceListRunsByRecurringRunDefault)
 	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 

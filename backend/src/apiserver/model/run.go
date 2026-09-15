@@ -211,13 +211,12 @@ type Run struct {
 	Description string `gorm:"column:Description; not null;"`
 	// Namespace is restricted to varchar(63) due to Kubernetes' naming constraints:
 	// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names
-	Namespace string `gorm:"column:Namespace; type:varchar(63); not null;index:namespace_createatinsec,priority:1;                                  index:namespace_conditions_finishedatinsec,priority:1"`
+	Namespace string `gorm:"column:Namespace; type:varchar(63); not null;index:namespace_createatinsec,priority:1;                                  index:namespace_state_finishedatinsec,priority:1"`
 	// varchar(64) is carefully chosen to ensure composite index constraints remain
-	// within MySQL's 767-byte limit
-	// e.g., ExperimentId(varchar(64)) + Conditions(varchar(125)) + FinishedAtInSec(8 bytes) = 764 bytes < 767 bytes
-	// For details on type lengths and index safety, refer to comments in the Pipeline struct.
+	// within MySQL's 767-byte limit. For details on type lengths and index safety,
+	// refer to comments in the Pipeline struct.
 	// nolint:staticcheck // [ST1003] Field name matches upstream legacy naming
-	ExperimentId   string `gorm:"column:ExperimentUUID;type:varchar(64); not null; index:experimentuuid_createatinsec,priority:1; index:experimentuuid_conditions_finishedatinsec,priority:1"`
+	ExperimentId   string `gorm:"column:ExperimentUUID;type:varchar(64); not null; index:experimentuuid_createatinsec,priority:1; index:experimentuuid_state_finishedatinsec,priority:1"`
 	RecurringRunId string `gorm:"column:JobUUID; default:null;"`
 
 	StorageState   StorageState `gorm:"column:StorageState; not null;"`
@@ -298,9 +297,6 @@ func (r *Run) ToV2() *Run {
 			r.RecurringRunId = ref.ReferenceUUID
 		}
 	}
-	if r.Conditions != "" && r.State == "" {
-		r.State = RuntimeState(r.Conditions)
-	}
 	r.State = r.State.ToV2()
 	r.StorageState = r.StorageState.ToV2()
 	return r
@@ -310,13 +306,11 @@ func (r *Run) ToV2() *Run {
 type RunDetails struct {
 	CreatedAtInSec   int64 `gorm:"column:CreatedAtInSec; not null;index:experimentuuid_createatinsec,priority:2; index:namespace_createatinsec,priority:2"`
 	ScheduledAtInSec int64 `gorm:"column:ScheduledAtInSec; default:0;"`
-	FinishedAtInSec  int64 `gorm:"column:FinishedAtInSec; default:0; index:experimentuuid_conditions_finishedatinsec,priority:3;index:namespace_conditions_finishedatinsec,priority:3"`
-	// Conditions were deprecated. Use State instead.
-	// varchar(125) is carefully chosen to ensure composite index constraints remain
-	// within MySQL's 767-byte limit (e.g., when combined with ExperimentId and FinishedAtInSec).
-	// For details on type lengths and index safety, refer to comments in the Pipeline struct.
-	Conditions         string           `gorm:"column:Conditions; type:varchar(125); not null;  index:experimentuuid_conditions_finishedatinsec,priority:2;index:namespace_conditions_finishedatinsec,priority:2"`
-	State              RuntimeState     `gorm:"column:State; default:null;"`
+	FinishedAtInSec  int64 `gorm:"column:FinishedAtInSec; default:0; index:experimentuuid_state_finishedatinsec,priority:3;index:namespace_state_finishedatinsec,priority:3"`
+	// Kept only as an in-memory adapter for unregistered V1 conversion code. The
+	// V2-only database schema no longer persists Conditions.
+	Conditions         string           `gorm:"-"`
+	State              RuntimeState     `gorm:"column:State; default:null; index:experimentuuid_state_finishedatinsec,priority:2;index:namespace_state_finishedatinsec,priority:2"`
 	StateHistoryString LargeText        `gorm:"column:StateHistory; default:null;"`
 	StateHistory       []*RuntimeStatus `gorm:"-;"`
 	// Serialized runtime details of a run in v2beta1
@@ -375,7 +369,6 @@ var runAPIToModelFieldMap = map[string]string{
 	"description":      "Description",
 	"scheduled_at":     "ScheduledAtInSec",
 	"storage_state":    "StorageState",
-	"status":           "Conditions",
 	"namespace":        "Namespace",               // v2beta1 API
 	"experiment_id":    "ExperimentUUID",          // v2beta1 API
 	"state":            "State",                   // v2beta1 API
@@ -422,8 +415,6 @@ func (r *Run) GetFieldValue(name string) interface{} {
 		return r.RunDetails.ScheduledAtInSec
 	case "StorageState":
 		return r.StorageState
-	case "Conditions":
-		return r.RunDetails.Conditions
 	case "Namespace":
 		return r.Namespace
 	case "ExperimentId":

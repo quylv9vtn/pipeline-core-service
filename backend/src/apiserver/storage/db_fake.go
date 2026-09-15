@@ -40,6 +40,8 @@ func NewFakeDB() (*DB, error) {
 		&model.Task{},
 		&model.DBStatus{},
 		&model.DefaultExperiment{},
+		&model.QuotaLimit{},
+		&model.QuotaAllocation{},
 	); err != nil {
 		return nil, util.Wrap(err, "Failed to automigrate models")
 	}

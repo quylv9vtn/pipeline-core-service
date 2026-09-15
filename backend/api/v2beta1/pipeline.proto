@@ -98,7 +98,8 @@ service PipelineService {
   }
 
   // Creates a new pipeline and a new pipeline version in a single transaction.
-  rpc CreatePipelineAndVersion(CreatePipelineAndVersionRequest) returns (Pipeline) {
+  rpc CreatePipelineAndVersion(CreatePipelineAndVersionRequest)
+      returns (CreatePipelineAndVersionResponse) {
     option (google.api.http) = {
       post: "/apis/v2beta1/pipelines/create"
       body: "*"
@@ -202,6 +203,11 @@ message PipelineVersion {
   // Output. The pipeline spec for the pipeline version.
   google.protobuf.Struct pipeline_spec = 7;
 
+  // Output. Peak Kubernetes resource requests and limits calculated from the
+  // immutable pipeline version. The calculation field is EXACT, UPPER_BOUND,
+  // or UNKNOWN; warnings explain conservative or unresolved cases.
+  google.protobuf.Struct resource_envelope = 11;
+
   // In case any error happens retrieving a pipeline version field, only
   // pipeline ID, pipeline version ID, and the error message are returned. 
   // Client has the flexibility of choosing how to handle the error. 
@@ -282,6 +288,14 @@ message CreatePipelineAndVersionRequest {
 
   // Required input. Pipeline version (child) to be created.
   // Pipeline spec will be downloaded from pipeline_version.package_url.
+  PipelineVersion pipeline_version = 2;
+}
+
+message CreatePipelineAndVersionResponse {
+  // The newly created parent pipeline.
+  Pipeline pipeline = 1;
+
+  // The newly created initial pipeline version containing the executable spec.
   PipelineVersion pipeline_version = 2;
 }
 

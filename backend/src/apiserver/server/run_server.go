@@ -91,7 +91,8 @@ var (
 )
 
 type RunServerOptions struct {
-	CollectMetrics bool `json:"collect_metrics,omitempty"`
+	CollectMetrics bool              `json:"collect_metrics,omitempty"`
+	MetadataReader RunMetadataReader `json:"-"`
 }
 
 // BaseRunServer wraps RunServer and RunServerV1
@@ -137,6 +138,11 @@ func (s *BaseRunServer) createRun(ctx context.Context, run *model.Run) (*model.R
 	if run.DisplayName == "" {
 		return nil, util.Wrapf(util.NewInvalidInputError("The run name is empty. Please specify a valid name"), "Failed to create a run due to invalid name")
 	}
+	resolvedNamespace, err := s.resourceManager.ApplyExecutionNamespace(run.Namespace, run.PipelineSpec, run.RecurringRunId)
+	if err != nil {
+		return nil, util.Wrapf(err, "Failed to create a run due to invalid parent pipeline namespace")
+	}
+	run.Namespace = resolvedNamespace
 	experimentId, namespace, err := s.resourceManager.GetValidExperimentNamespacePair(run.ExperimentId, run.Namespace)
 	if err != nil {
 		return nil, util.Wrapf(err, "Failed to create a run due to invalid experimentId and namespace combination")
@@ -446,7 +452,17 @@ func (s *RunServer) GetRun(ctx context.Context, request *apiv2beta1.GetRunReques
 		return nil, util.Wrap(err, "Failed to get a run")
 	}
 
-	return toApiRun(run), nil
+	apiRun := toApiRun(run)
+	// Workflow task rows have PodName in the pipeline DB. Legacy cache-task
+	// rows do not, but their MLMD execution records retain pod_name. Enrich the
+	// detailed Get response on a best-effort basis without making MLMD
+	// availability a prerequisite for the core Run API.
+	if apiRun.GetRunDetails() != nil && needsExecutionPodName(run.RunDetails.TaskDetails) {
+		if executions, metadataErr := s.loadRunExecutions(ctx, run.UUID, run.RunDetails.TaskDetails); metadataErr == nil {
+			enrichTaskPodNamesFromExecutions(apiRun.RunDetails.TaskDetails, executions)
+		}
+	}
+	return apiRun, nil
 }
 
 // Fetches runs given query parameters.
@@ -464,6 +480,53 @@ func (s *RunServer) ListRuns(ctx context.Context, r *apiv2beta1.ListRunsRequest)
 		return nil, util.Wrap(err, "Failed to list runs")
 	}
 	return &apiv2beta1.ListRunsResponse{Runs: toApiRuns(runs), TotalSize: int32(runsCount), NextPageToken: nextPageToken}, nil
+}
+
+// ListRunsByRecurringRun fetches runs created by one recurring run (job).
+func (s *RunServer) ListRunsByRecurringRun(ctx context.Context, r *apiv2beta1.ListRunsByRecurringRunRequest) (*apiv2beta1.ListRunsResponse, error) {
+	if s.options.CollectMetrics {
+		listRunRequests.Inc()
+	}
+	if r.GetRecurringRunId() == "" {
+		return nil, util.NewInvalidInputError("recurring run ID cannot be empty")
+	}
+	opts, err := validatedListOptions(&model.Run{}, r.GetPageToken(), int(r.GetPageSize()), r.GetSortBy(), r.GetFilter(), "v2beta1")
+	if err != nil {
+		return nil, util.Wrap(err, "Failed to create list options")
+	}
+
+	job, err := s.resourceManager.GetJob(r.GetRecurringRunId())
+	if err != nil {
+		return nil, util.Wrap(err, "Failed to fetch the recurring run")
+	}
+	namespace := job.Namespace
+	if s.resourceManager.IsEmptyNamespace(namespace) && job.ExperimentId != "" {
+		namespace, err = s.resourceManager.GetNamespaceFromExperimentId(job.ExperimentId)
+		if err != nil {
+			return nil, util.Wrap(err, "Failed to resolve the recurring run namespace")
+		}
+	}
+	namespace = s.resourceManager.ReplaceNamespace(namespace)
+	resourceAttributes := &authorizationv1.ResourceAttributes{
+		Namespace: namespace,
+		Verb:      common.RbacResourceVerbList,
+	}
+	if err := s.canAccessRun(ctx, "", resourceAttributes); err != nil {
+		return nil, util.Wrapf(err, "Failed to list runs due to authorization error. Check if you have permission to access namespace %s", namespace)
+	}
+
+	filterContext := &model.FilterContext{
+		ReferenceKey: &model.ReferenceKey{Type: model.JobResourceType, ID: r.GetRecurringRunId()},
+	}
+	runs, runsCount, nextPageToken, err := s.resourceManager.ListRuns(filterContext, opts)
+	if err != nil {
+		return nil, util.Wrap(err, "Failed to list runs for the recurring run")
+	}
+	return &apiv2beta1.ListRunsResponse{
+		Runs:          toApiRuns(runs),
+		TotalSize:     int32(runsCount),
+		NextPageToken: nextPageToken,
+	}, nil
 }
 
 // Archives a run.

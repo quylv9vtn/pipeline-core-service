@@ -52,6 +52,10 @@ type PipelineVersion struct {
 	Description     LargeText `gorm:"column:Description;"`
 	PipelineSpec    LargeText `gorm:"column:PipelineSpec; not null;"`    // Same as common.MaxFileLength (32MB in server). Argo imposes 700kB limit
 	PipelineSpecURI LargeText `gorm:"column:PipelineSpecURI; not null;"` // Can store references to ObjectStore files
+	// ResourceEnvelope stores the calculated peak resource requirements as JSON.
+	// It is derived from PipelineSpec when the version is created and is not
+	// overridden by individual runs.
+	ResourceEnvelope LargeText `gorm:"column:ResourceEnvelope;"`
 }
 
 func (p PipelineVersion) GetValueOfPrimaryKey() string {
@@ -80,6 +84,7 @@ func (p *PipelineVersion) APIToModelFieldMap() map[string]string {
 		"status":              "Status",
 		"description":         "Description",  // v2beta1 API
 		"pipeline_spec":       "PipelineSpec", // v2beta1 API
+		"resource_envelope":   "ResourceEnvelope",
 	}
 }
 
@@ -119,6 +124,8 @@ func (p *PipelineVersion) GetFieldValue(name string) interface{} {
 		return p.PipelineSpec
 	case "PipelineSpecURI":
 		return p.PipelineSpecURI
+	case "ResourceEnvelope":
+		return p.ResourceEnvelope
 	default:
 		return nil
 	}

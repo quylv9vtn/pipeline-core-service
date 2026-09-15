@@ -99,6 +99,11 @@ func (s *BaseJobServer) createJob(ctx context.Context, job *model.Job) (*model.J
 	if job.DisplayName == "" {
 		return nil, util.NewInvalidInputError("Recurring run name is empty. Please specify a valid name")
 	}
+	resolvedNamespace, err := s.resourceManager.ApplyExecutionNamespace(job.Namespace, job.PipelineSpec, "")
+	if err != nil {
+		return nil, util.Wrapf(err, "Failed to create a recurring run due to invalid parent pipeline namespace")
+	}
+	job.Namespace = resolvedNamespace
 	experimentId, namespace, err := s.resourceManager.GetValidExperimentNamespacePair(job.ExperimentId, job.Namespace)
 	if err != nil {
 		return nil, util.Wrapf(err, "Failed to create a recurring run due to invalid experimentId and namespace combination")

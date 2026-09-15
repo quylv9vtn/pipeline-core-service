@@ -640,7 +640,7 @@ func NewPipelineServerV1(resourceManager *resource.ResourceManager, options *Pip
 
 // Creates a pipeline and a pipeline version in a single transaction.
 // Supports v2beta1 behavior.
-func (s *PipelineServer) CreatePipelineAndVersion(ctx context.Context, request *apiv2beta1.CreatePipelineAndVersionRequest) (*apiv2beta1.Pipeline, error) {
+func (s *PipelineServer) CreatePipelineAndVersion(ctx context.Context, request *apiv2beta1.CreatePipelineAndVersionRequest) (*apiv2beta1.CreatePipelineAndVersionResponse, error) {
 	if s.options.CollectMetrics {
 		createPipelineRequests.Inc()
 		createPipelineVersionRequests.Inc()
@@ -653,7 +653,7 @@ func (s *PipelineServer) CreatePipelineAndVersion(ctx context.Context, request *
 	}
 
 	// Create both pipeline and pipeline version in a single transaction
-	newPipeline, _, err := s.createPipelineAndPipelineVersion(ctx, pipeline, request.GetPipelineVersion().GetPackageUrl().GetPipelineUrl())
+	newPipeline, newPipelineVersion, err := s.createPipelineAndPipelineVersion(ctx, pipeline, request.GetPipelineVersion().GetPackageUrl().GetPipelineUrl())
 	if err != nil {
 		return nil, util.Wrap(err, "Failed to create a pipeline")
 	}
@@ -662,7 +662,10 @@ func (s *PipelineServer) CreatePipelineAndVersion(ctx context.Context, request *
 		pipelineCount.Inc()
 		pipelineVersionCount.Inc()
 	}
-	return toApiPipeline(newPipeline), nil
+	return &apiv2beta1.CreatePipelineAndVersionResponse{
+		Pipeline:        toApiPipeline(newPipeline),
+		PipelineVersion: toApiPipelineVersion(newPipelineVersion),
+	}, nil
 }
 
 // Creates a pipeline version from. Not exported.

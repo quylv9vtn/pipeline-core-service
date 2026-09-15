@@ -17,6 +17,7 @@ package server
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	apiv1beta1 "github.com/kubeflow/pipelines/backend/api/v1beta1/go_client"
@@ -143,6 +144,14 @@ func (s *ExperimentServer) CreateExperiment(ctx context.Context, request *apiv2b
 ) {
 	if s.options.CollectMetrics {
 		createExperimentRequests.Inc()
+	}
+
+	requestedID := request.GetExperiment().GetExperimentId()
+	if requestedID != "" {
+		parsedID, err := uuid.Parse(requestedID)
+		if err != nil || parsedID.String() != requestedID {
+			return nil, util.NewInvalidInputError("Experiment ID must be a canonical UUID")
+		}
 	}
 
 	modelExperiment, err := toModelExperiment(request.GetExperiment())

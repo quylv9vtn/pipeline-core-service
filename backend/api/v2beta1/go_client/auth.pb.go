@@ -142,10 +142,13 @@ func (AuthorizeRequest_Verb) EnumDescriptor() ([]byte, []int) {
 // and verb. User identity is not part of the message, because it is expected
 // to be parsed from request headers. Caller should proxy user request's headers.
 type AuthorizeRequest struct {
-	state         protoimpl.MessageState     `protogen:"open.v1"`
-	Namespace     string                     `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`                                                                         // Namespace the resource belongs to.
-	Resources     AuthorizeRequest_Resources `protobuf:"varint,2,opt,name=resources,proto3,enum=kubeflow.pipelines.backend.api.v2beta1.AuthorizeRequest_Resources" json:"resources,omitempty"` // Resource type asking for authorization.
-	Verb          AuthorizeRequest_Verb      `protobuf:"varint,3,opt,name=verb,proto3,enum=kubeflow.pipelines.backend.api.v2beta1.AuthorizeRequest_Verb" json:"verb,omitempty"`                // Verb on the resource asking for authorization.
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Namespace the resource belongs to.
+	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// Resource type asking for authorization.
+	Resources AuthorizeRequest_Resources `protobuf:"varint,2,opt,name=resources,proto3,enum=kubeflow.pipelines.backend.api.v2beta1.AuthorizeRequest_Resources" json:"resources,omitempty"`
+	// Verb on the resource asking for authorization.
+	Verb          AuthorizeRequest_Verb `protobuf:"varint,3,opt,name=verb,proto3,enum=kubeflow.pipelines.backend.api.v2beta1.AuthorizeRequest_Verb" json:"verb,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -205,11 +208,11 @@ var File_backend_api_v2beta1_auth_proto protoreflect.FileDescriptor
 
 const file_backend_api_v2beta1_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x1ebackend/api/v2beta1/auth.proto\x12&kubeflow.pipelines.backend.api.v2beta1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a.protoc-gen-openapiv2/options/annotations.proto\"\xd7\x02\n" +
-	"\x10AuthorizeRequest\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12`\n" +
-	"\tresources\x18\x02 \x01(\x0e2B.kubeflow.pipelines.backend.api.v2beta1.AuthorizeRequest.ResourcesR\tresources\x12Q\n" +
-	"\x04verb\x18\x03 \x01(\x0e2=.kubeflow.pipelines.backend.api.v2beta1.AuthorizeRequest.VerbR\x04verb\"2\n" +
+	"\x1ebackend/api/v2beta1/auth.proto\x12&kubeflow.pipelines.backend.api.v2beta1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a.protoc-gen-openapiv2/options/annotations.proto\"\xe6\x02\n" +
+	"\x10AuthorizeRequest\x12!\n" +
+	"\tnamespace\x18\x01 \x01(\tB\x03\xe0A\x02R\tnamespace\x12e\n" +
+	"\tresources\x18\x02 \x01(\x0e2B.kubeflow.pipelines.backend.api.v2beta1.AuthorizeRequest.ResourcesB\x03\xe0A\x02R\tresources\x12V\n" +
+	"\x04verb\x18\x03 \x01(\x0e2=.kubeflow.pipelines.backend.api.v2beta1.AuthorizeRequest.VerbB\x03\xe0A\x02R\x04verb\"2\n" +
 	"\tResources\x12\x18\n" +
 	"\x14UNASSIGNED_RESOURCES\x10\x00\x12\v\n" +
 	"\aVIEWERS\x10\x01\"<\n" +

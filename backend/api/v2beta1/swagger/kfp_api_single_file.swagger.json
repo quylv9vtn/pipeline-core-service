@@ -53,14 +53,14 @@
             "name": "namespace",
             "description": "Namespace the resource belongs to.",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string"
           },
           {
             "name": "resources",
             "description": "Resource type asking for authorization.",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
             "enum": [
               "UNASSIGNED_RESOURCES",
@@ -72,7 +72,7 @@
             "name": "verb",
             "description": "Verb on the resource asking for authorization.",
             "in": "query",
-            "required": false,
+            "required": true,
             "type": "string",
             "enum": [
               "UNASSIGNED_VERB",
@@ -109,14 +109,14 @@
         "parameters": [
           {
             "name": "page_token",
-            "description": "A page token to request the next page of results. The token is acquried\nfrom the nextPageToken field of the response from the previous\nListExperiments call or can be omitted when fetching the first page.",
+            "description": "A page token to request the next page of results. The token is acquried\r\nfrom the nextPageToken field of the response from the previous\r\nListExperiments call or can be omitted when fetching the first page.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The number of experiments to be listed per page. If there are more\nexperiments than this number, the response message will contain a\nnextPageToken field you can use to fetch the next page.",
+            "description": "The number of experiments to be listed per page. If there are more\r\nexperiments than this number, the response message will contain a\r\nnextPageToken field you can use to fetch the next page.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -124,14 +124,14 @@
           },
           {
             "name": "sort_by",
-            "description": "Can be format of \"field_name\", \"field_name asc\" or \"field_name desc\"\nAscending by default.",
+            "description": "Can be format of \"field_name\", \"field_name asc\" or \"field_name desc\"\r\nAscending by default.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
-            "description": "A url-encoded, JSON-serialized Filter protocol buffer (see\n[filter.proto](https://github.com/kubeflow/pipelines/blob/master/backend/api/v2beta1/api/filter.proto)).",
+            "description": "A url-encoded, JSON-serialized Filter protocol buffer (see\r\n[filter.proto](https://github.com/kubeflow/pipelines/blob/master/backend/api/v2beta1/api/filter.proto)).",
             "in": "query",
             "required": false,
             "type": "string"
@@ -213,7 +213,7 @@
         ]
       },
       "delete": {
-        "summary": "Deletes an experiment without deleting the experiment's runs and recurring \nruns. To avoid unexpected behaviors, delete an experiment's runs and recurring \nruns before deleting the experiment.",
+        "summary": "Deletes an experiment without deleting the experiment's runs and recurring \r\nruns. To avoid unexpected behaviors, delete an experiment's runs and recurring \r\nruns before deleting the experiment.",
         "operationId": "ExperimentService_DeleteExperiment",
         "responses": {
           "200": {
@@ -279,7 +279,7 @@
     },
     "/apis/v2beta1/experiments/{experiment_id}:unarchive": {
       "post": {
-        "summary": "Restores an archived experiment. The experiment's archived runs and recurring\nruns will stay archived.",
+        "summary": "Restores an archived experiment. The experiment's archived runs and recurring\r\nruns will stay archived.",
         "operationId": "ExperimentService_UnarchiveExperiment",
         "responses": {
           "200": {
@@ -368,7 +368,7 @@
           },
           {
             "name": "page_size",
-            "description": "The number of pipelines to be listed per page. If there are more pipelines\nthan this number, the response message will contain a valid value in the\nnextPageToken field.",
+            "description": "The number of pipelines to be listed per page. If there are more pipelines\r\nthan this number, the response message will contain a valid value in the\r\nnextPageToken field.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -376,14 +376,14 @@
           },
           {
             "name": "sort_by",
-            "description": "Sorting order in form of \"field_name\", \"field_name asc\" or \"field_name desc\".\nAscending by default.",
+            "description": "Sorting order in form of \"field_name\", \"field_name asc\" or \"field_name desc\".\r\nAscending by default.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
-            "description": "A url-encoded, JSON-serialized filter protocol buffer (see\n[filter.proto](https://github.com/kubeflow/pipelines/blob/master/backend/api/filter.proto)).",
+            "description": "A url-encoded, JSON-serialized filter protocol buffer (see\r\n[filter.proto](https://github.com/kubeflow/pipelines/blob/master/backend/api/filter.proto)).",
             "in": "query",
             "required": false,
             "type": "string"
@@ -434,7 +434,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v2beta1Pipeline"
+              "$ref": "#/definitions/v2beta1CreatePipelineAndVersionResponse"
             }
           },
           "default": {
@@ -487,7 +487,7 @@
           },
           {
             "name": "namespace",
-            "description": "Optional input. Namespace of the pipeline. \nIt could be empty if default namespaces needs to be used or if multi-user \nsupport is turned off.",
+            "description": "Optional input. Namespace of the pipeline. \r\nIt could be empty if default namespaces needs to be used or if multi-user \r\nsupport is turned off.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -530,7 +530,7 @@
         ]
       },
       "delete": {
-        "summary": "Deletes a pipeline by ID. If cascade is false (default), it returns an error if the\npipeline has any versions. If cascade is true, it will also delete all pipeline versions.",
+        "summary": "Deletes a pipeline by ID. If cascade is false (default), it returns an error if the\r\npipeline has any versions. If cascade is true, it will also delete all pipeline versions.",
         "operationId": "PipelineService_DeletePipeline",
         "responses": {
           "200": {
@@ -557,7 +557,7 @@
           },
           {
             "name": "cascade",
-            "description": "Optional. If true, the pipeline and all its versions will be deleted.\nIf false (default), only the pipeline will be deleted if it has no versions.",
+            "description": "Optional. If true, the pipeline and all its versions will be deleted.\r\nIf false (default), only the pipeline will be deleted if it has no versions.",
             "in": "query",
             "required": false,
             "type": "boolean"
@@ -603,7 +603,7 @@
           },
           {
             "name": "page_size",
-            "description": "The number of pipeline versions to be listed per page. If there are more pipeline\nversions than this number, the response message will contain a valid value in the\nnextPageToken field.",
+            "description": "The number of pipeline versions to be listed per page. If there are more pipeline\r\nversions than this number, the response message will contain a valid value in the\r\nnextPageToken field.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -611,14 +611,14 @@
           },
           {
             "name": "sort_by",
-            "description": "Sorting order in form of \"field_name\", \"field_name asc\" or \"field_name desc\".\nAscending by default.",
+            "description": "Sorting order in form of \"field_name\", \"field_name asc\" or \"field_name desc\".\r\nAscending by default.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
-            "description": "A url-encoded, JSON-serialized filter protocol buffer (see\n[filter.proto](https://github.com/kubeflow/pipelines/blob/master/backend/api/filter.proto)).",
+            "description": "A url-encoded, JSON-serialized filter protocol buffer (see\r\n[filter.proto](https://github.com/kubeflow/pipelines/blob/master/backend/api/filter.proto)).",
             "in": "query",
             "required": false,
             "type": "string"
@@ -747,6 +747,8 @@
     },
     "/apis/v2beta1/pipelines/upload": {
       "post": {
+        "summary": "Upload a pipeline and its initial version",
+        "description": "Creates a parent pipeline and an initial executable pipeline version from a compiled pipeline package.",
         "operationId": "UploadPipeline",
         "consumes": [
           "multipart/form-data"
@@ -756,13 +758,13 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "The created pipeline and initial pipeline version.",
             "schema": {
-              "$ref": "#/definitions/v2beta1Pipeline"
+              "$ref": "#/definitions/v2beta1CreatePipelineAndVersionResponse"
             }
           },
           "default": {
-            "description": "",
+            "description": "The upload failed.",
             "schema": {
               "$ref": "#/definitions/googlerpcStatus"
             }
@@ -777,28 +779,48 @@
             "description": "The pipeline to upload. Maximum size of 32MB is supported."
           },
           {
+            "name": "pipeline_id",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional client-provided ID for the parent pipeline. If omitted, the database-backed API server generates one."
+          },
+          {
+            "name": "pipeline_version_id",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional client-provided ID for the initial pipeline version. If omitted, the database-backed API server generates one."
+          },
+          {
             "name": "name",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "description": "Optional pipeline name. If omitted, the name is derived from the uploaded package."
           },
           {
             "name": "display_name",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "description": "Optional display name for the pipeline."
           },
           {
             "name": "description",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "description": "Optional description for the pipeline."
           },
           {
             "name": "namespace",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "description": "Namespace that owns the pipeline. If omitted, the API server resolves the default namespace."
           }
         ],
         "tags": [
@@ -808,6 +830,8 @@
     },
     "/apis/v2beta1/pipelines/upload_version": {
       "post": {
+        "summary": "Upload a new version of an existing pipeline",
+        "description": "Creates an executable pipeline version under the parent pipeline identified by pipelineid.",
         "operationId": "UploadPipelineVersion",
         "consumes": [
           "multipart/form-data"
@@ -817,13 +841,13 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "The created pipeline version.",
             "schema": {
               "$ref": "#/definitions/v2beta1PipelineVersion"
             }
           },
           "default": {
-            "description": "",
+            "description": "The upload failed.",
             "schema": {
               "$ref": "#/definitions/googlerpcStatus"
             }
@@ -841,25 +865,38 @@
             "name": "name",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "description": "Optional pipeline version name. If omitted, the name is derived from the uploaded package."
           },
           {
             "name": "display_name",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "description": "Optional display name for the pipeline version."
           },
           {
             "name": "pipelineid",
             "in": "query",
+            "required": true,
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the existing parent pipeline."
+          },
+          {
+            "name": "pipeline_version_id",
+            "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional client-provided ID for the new pipeline version. If omitted, the database-backed API server generates one."
           },
           {
             "name": "description",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "description": "Optional description for the pipeline version."
           }
         ],
         "tags": [
@@ -867,9 +904,303 @@
         ]
       }
     },
+    "/apis/v2beta1/pipelines/{pipeline_id}/versions/{pipeline_version_id}:download": {
+      "get": {
+        "summary": "Download a pipeline version definition",
+        "description": "Downloads the original executable definition stored for a pipeline version. The pipeline version must belong to the pipeline identified by pipeline_id.",
+        "operationId": "DownloadPipelineVersion",
+        "produces": [
+          "application/yaml"
+        ],
+        "responses": {
+          "200": {
+            "description": "The pipeline version definition as a downloadable YAML file.",
+            "schema": {
+              "type": "file"
+            },
+            "headers": {
+              "Content-Disposition": {
+                "type": "string",
+                "description": "Attachment filename generated from the pipeline version ID."
+              }
+            }
+          },
+          "default": {
+            "description": "The pipeline version could not be downloaded.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pipeline_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "ID of the parent pipeline."
+          },
+          {
+            "name": "pipeline_version_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "ID of the pipeline version whose definition will be downloaded."
+          }
+        ],
+        "tags": [
+          "PipelineService"
+        ]
+      }
+    },
+    "/apis/v2beta1/projects": {
+      "get": {
+        "summary": "List managed projects",
+        "description": "Lists project namespaces managed by pipeline-core.",
+        "operationId": "ListProjects",
+        "responses": {
+          "200": {"description": "Managed projects.", "schema": {"$ref": "#/definitions/v2beta1ProjectListResponse"}},
+          "403": {"description": "The caller is not authorized to list projects.", "schema": {"$ref": "#/definitions/v2beta1ProjectError"}},
+          "500": {"description": "Project listing failed.", "schema": {"$ref": "#/definitions/v2beta1ProjectError"}}
+        },
+        "tags": ["ProjectService"]
+      },
+      "post": {
+        "summary": "Provision a project namespace and pipeline runtime",
+        "description": "Creates or reconciles the namespace, pipeline-runner ServiceAccount, RoleBinding, and artifact credential Secret. Repeating the same request is safe. Conflicting managed metadata or runtime resources return HTTP 409 and are never overwritten.",
+        "operationId": "ProvisionProject",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2beta1ProjectProvisionRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The namespace already existed and was unchanged or updated with missing labels.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ProjectProvisionResponse"
+            }
+          },
+          "201": {
+            "description": "The namespace was created.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ProjectProvisionResponse"
+            }
+          },
+          "400": {
+            "description": "The request is malformed or contains invalid identifiers.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ProjectError"
+            }
+          },
+          "403": {
+            "description": "The caller is not authorized to provision namespaces.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ProjectError"
+            }
+          },
+          "409": {
+            "description": "The namespace has conflicting project-management labels.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ProjectError"
+            }
+          },
+          "500": {
+            "description": "Namespace provisioning failed.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ProjectError"
+            }
+          }
+        },
+        "tags": [
+          "ProjectService"
+        ]
+      }
+    },
+    "/apis/v2beta1/projects/{project_id}": {
+      "get": {
+        "summary": "Get a managed project",
+        "description": "Returns the managed project namespace identified by project UUID.",
+        "operationId": "GetProject",
+        "parameters": [
+          {"name": "project_id", "in": "path", "required": true, "type": "string", "format": "uuid", "description": "Project UUID."}
+        ],
+        "responses": {
+          "200": {"description": "Managed project.", "schema": {"$ref": "#/definitions/v2beta1ProjectProvisionResponse"}},
+          "400": {"description": "The project ID is invalid.", "schema": {"$ref": "#/definitions/v2beta1ProjectError"}},
+          "403": {"description": "The caller is not authorized to get projects.", "schema": {"$ref": "#/definitions/v2beta1ProjectError"}},
+          "404": {"description": "The project was not found.", "schema": {"$ref": "#/definitions/v2beta1ProjectError"}},
+          "500": {"description": "Project lookup failed.", "schema": {"$ref": "#/definitions/v2beta1ProjectError"}}
+        },
+        "tags": ["ProjectService"]
+      }
+    },
+    "/quota/limits": {
+      "get": {
+        "summary": "Get project quota limits",
+        "operationId": "QuotaService_GetLimits",
+        "parameters": [{"name": "project_id", "in": "query", "required": true, "type": "string", "format": "uuid"}],
+        "responses": {
+          "200": {"description": "Configured quota limits.", "schema": {"$ref": "#/definitions/quotaLimitsResponse"}},
+          "400": {"description": "Invalid project ID."},
+          "500": {"description": "Failed to read quota limits."}
+        },
+        "tags": ["QuotaService"]
+      },
+      "put": {
+        "summary": "Set or update project quota limits",
+        "description": "Stores the quota limits for a project in this Core region. A zero limit means the resource is not allowed.",
+        "operationId": "QuotaService_PutLimits",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["project_id", "limits"],
+              "properties": {
+                "project_id": {"type": "string", "format": "uuid"},
+                "limits": {
+                  "type": "object",
+                  "required": ["ai_pipeline_cpu", "ai_pipeline_memory", "ai_pipeline_gpu_rtx2080", "ai_pipeline_gpu_h200"],
+                  "properties": {
+                    "ai_pipeline_cpu": {"type": "integer", "format": "int64", "minimum": 0},
+                    "ai_pipeline_memory": {"type": "integer", "format": "int64", "minimum": 0},
+                    "ai_pipeline_gpu_rtx2080": {"type": "integer", "format": "int64", "minimum": 0},
+                    "ai_pipeline_gpu_h200": {"type": "integer", "format": "int64", "minimum": 0}
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "204": {"description": "Quota limits saved."},
+          "400": {"description": "Invalid project ID or limit values."},
+          "500": {"description": "Failed to save quota limits."}
+        },
+        "tags": ["QuotaService"]
+      }
+    },
+    "/quota/usage": {
+      "get": {
+        "summary": "Get current project quota usage",
+        "operationId": "QuotaService_GetUsage",
+        "parameters": [
+          {"name": "project_id", "in": "query", "required": true, "type": "string", "format": "uuid"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Current usage. Unknown projects return zero values.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "project_id": {"type": "string", "format": "uuid"},
+                "used": {
+                  "type": "object",
+                  "properties": {
+                    "ai_pipeline_cpu": {"type": "integer", "format": "int64"},
+                    "ai_pipeline_memory": {"type": "integer", "format": "int64"},
+                    "ai_pipeline_gpu_rtx2080": {"type": "integer", "format": "int64"},
+                    "ai_pipeline_gpu_h200": {"type": "integer", "format": "int64"}
+                  }
+                }
+              }
+            }
+          },
+          "400": {"description": "Invalid project ID."},
+          "500": {"description": "Failed to read quota usage."}
+        },
+        "tags": ["QuotaService"]
+      }
+    },
+    "/quota/usage/bulk": {
+      "post": {
+        "summary": "Get quota usage for multiple projects",
+        "description": "Returns usage for up to 100 projects in this Core region.",
+        "operationId": "QuotaService_GetUsageBulk",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["project_ids"],
+              "properties": {
+                "project_ids": {"type": "array", "maxItems": 100, "items": {"type": "string", "format": "uuid"}}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Usage for each requested project.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "results": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "project_id": {"type": "string", "format": "uuid"},
+                      "used": {"type": "object", "additionalProperties": {"type": "integer", "format": "int64"}}
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {"description": "Invalid project ID list or more than 100 projects."},
+          "500": {"description": "Failed to read quota usage."}
+        },
+        "tags": ["QuotaService"]
+      }
+    },
+    "/apis/v2beta1/quota/limits": {
+      "get": {
+        "summary": "Get project quota limits",
+        "operationId": "QuotaService_GetLimitsV2",
+        "parameters": [{"name": "project_id", "in": "query", "required": true, "type": "string", "format": "uuid"}],
+        "responses": {"200": {"description": "Configured quota limits.", "schema": {"$ref": "#/definitions/quotaLimitsResponse"}}, "400": {"description": "Invalid project ID."}, "500": {"description": "Failed to read quota limits."}},
+        "tags": ["QuotaService"]
+      },
+      "put": {
+        "summary": "Set or update project quota limits",
+        "operationId": "QuotaService_PutLimitsV2",
+        "parameters": [{"name": "body", "in": "body", "required": true, "schema": {"$ref": "#/paths/~1quota~1limits/put/parameters/0/schema"}}],
+        "responses": {"204": {"description": "Quota limits saved."}, "400": {"description": "Invalid request."}, "500": {"description": "Failed to save quota limits."}},
+        "tags": ["QuotaService"]
+      }
+    },
+    "/apis/v2beta1/quota/usage": {
+      "get": {
+        "summary": "Get current project quota usage",
+        "operationId": "QuotaService_GetUsageV2",
+        "parameters": [{"name": "project_id", "in": "query", "required": true, "type": "string", "format": "uuid"}],
+        "responses": {"200": {"description": "Current usage."}, "400": {"description": "Invalid project ID."}, "500": {"description": "Failed to read quota usage."}},
+        "tags": ["QuotaService"]
+      }
+    },
+    "/apis/v2beta1/quota/usage/bulk": {
+      "post": {
+        "summary": "Get quota usage for multiple projects",
+        "operationId": "QuotaService_GetUsageBulkV2",
+        "parameters": [{"name": "body", "in": "body", "required": true, "schema": {"$ref": "#/paths/~1quota~1usage~1bulk/post/parameters/0/schema"}}],
+        "responses": {"200": {"description": "Usage for each requested project."}, "400": {"description": "Invalid request."}, "500": {"description": "Failed to read quota usage."}},
+        "tags": ["QuotaService"]
+      }
+    },
     "/apis/v2beta1/recurringruns": {
       "get": {
-        "summary": "Finds all recurring runs given experiment and namespace.\nIf experiment ID is not specified, find all recurring runs across all experiments.",
+        "summary": "Finds all recurring runs given experiment and namespace.\r\nIf experiment ID is not specified, find all recurring runs across all experiments.",
         "operationId": "RecurringRunService_ListRecurringRuns",
         "responses": {
           "200": {
@@ -888,14 +1219,14 @@
         "parameters": [
           {
             "name": "page_token",
-            "description": "A page token to request the next page of results. The token is acquired\nfrom the nextPageToken field of the response from the previous\nListRecurringRuns call or can be omitted when fetching the first page.",
+            "description": "A page token to request the next page of results. The token is acquired\r\nfrom the nextPageToken field of the response from the previous\r\nListRecurringRuns call or can be omitted when fetching the first page.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The number of recurring runs to be listed per page. If there are more recurring runs\nthan this number, the response message will contain a nextPageToken field you can use\nto fetch the next page.",
+            "description": "The number of recurring runs to be listed per page. If there are more recurring runs\r\nthan this number, the response message will contain a nextPageToken field you can use\r\nto fetch the next page.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -903,7 +1234,7 @@
           },
           {
             "name": "sort_by",
-            "description": "Can be formatted as \"field_name\", \"field_name asc\" or \"field_name desc\".\nAscending by default.",
+            "description": "Can be formatted as \"field_name\", \"field_name asc\" or \"field_name desc\".\r\nAscending by default.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -917,7 +1248,7 @@
           },
           {
             "name": "filter",
-            "description": "A url-encoded, JSON-serialized Filter protocol buffer (see\n[filter.proto](https://github.com/kubeflow/pipelines/blob/master/backend/api/filter.proto)).",
+            "description": "A url-encoded, JSON-serialized Filter protocol buffer (see\r\n[filter.proto](https://github.com/kubeflow/pipelines/blob/master/backend/api/filter.proto)).",
             "in": "query",
             "required": false,
             "type": "string"
@@ -1079,7 +1410,7 @@
     },
     "/apis/v2beta1/recurringruns/{recurring_run_id}:enable": {
       "post": {
-        "summary": "Restarts a recurring run that was previously stopped. All runs associated with the\nrecurring run will continue.",
+        "summary": "Restarts a recurring run that was previously stopped. All runs associated with the\r\nrecurring run will continue.",
         "operationId": "RecurringRunService_EnableRecurringRun",
         "responses": {
           "200": {
@@ -1178,9 +1509,70 @@
         ]
       }
     },
+    "/apis/v2beta1/recurringruns/{recurring_run_id}/runs": {
+      "get": {
+        "summary": "Finds all runs created by a recurring run (job).",
+        "operationId": "RunService_ListRunsByRecurringRun",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ListRunsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "recurring_run_id",
+            "description": "The ID of the recurring run (job) that created the runs.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "page_token",
+            "description": "A page token returned by the previous request.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "page_size",
+            "description": "The number of runs to return per page.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "sort_by",
+            "description": "Can be format of \"field_name\", \"field_name asc\" or \"field_name desc\".",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "description": "A url-encoded, JSON-serialized Filter protocol buffer.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RunService"
+        ]
+      }
+    },
     "/apis/v2beta1/runs": {
       "get": {
-        "summary": "Finds all runs in an experiment given by experiment ID.\nIf experiment id is not specified, finds all runs across all experiments.",
+        "summary": "Finds all runs in an experiment given by experiment ID.\r\nIf experiment id is not specified, finds all runs across all experiments.",
         "operationId": "RunService_ListRuns",
         "responses": {
           "200": {
@@ -1213,14 +1605,14 @@
           },
           {
             "name": "page_token",
-            "description": "A page token to request the next page of results. The token is acquired\nfrom the nextPageToken field of the response from the previous\nListRuns call or can be omitted when fetching the first page.",
+            "description": "A page token to request the next page of results. The token is acquired\r\nfrom the nextPageToken field of the response from the previous\r\nListRuns call or can be omitted when fetching the first page.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "page_size",
-            "description": "The number of runs to be listed per page. If there are more runs than this\nnumber, the response message will contain a nextPageToken field you can use\nto fetch the next page.",
+            "description": "The number of runs to be listed per page. If there are more runs than this\r\nnumber, the response message will contain a nextPageToken field you can use\r\nto fetch the next page.",
             "in": "query",
             "required": false,
             "type": "integer",
@@ -1228,14 +1620,14 @@
           },
           {
             "name": "sort_by",
-            "description": "Can be format of \"field_name\", \"field_name asc\" or \"field_name desc\"\n(Example, \"name asc\" or \"id desc\"). Ascending by default.",
+            "description": "Can be format of \"field_name\", \"field_name asc\" or \"field_name desc\"\r\n(Example, \"name asc\" or \"id desc\"). Ascending by default.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
-            "description": "A url-encoded, JSON-serialized Filter protocol buffer (see\n[filter.proto](https://github.com/kubeflow/pipelines/blob/master/backend/api/filter.proto)).",
+            "description": "A url-encoded, JSON-serialized Filter protocol buffer (see\r\n[filter.proto](https://github.com/kubeflow/pipelines/blob/master/backend/api/filter.proto)).",
             "in": "query",
             "required": false,
             "type": "string"
@@ -1246,7 +1638,7 @@
         ]
       },
       "post": {
-        "summary": "Creates a new run in an experiment specified by experiment ID.\nIf experiment ID is not specified, the run is created in the default experiment.",
+        "summary": "Creates a new run in an experiment specified by experiment ID.\r\nIf experiment ID is not specified, the run is created in the default experiment.",
         "operationId": "RunService_CreateRun",
         "responses": {
           "200": {
@@ -1354,6 +1746,205 @@
             "description": "The ID of the parent experiment.",
             "in": "query",
             "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RunService"
+        ]
+      }
+    },
+    "/apis/v2beta1/runs/{run_id}/artifacts": {
+      "get": {
+        "summary": "Lists artifacts consumed or produced by tasks in a run. Artifact metadata\nis read directly from ML Metadata after authorizing access to the run.",
+        "operationId": "RunService_ListRunArtifacts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ListRunArtifactsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RunService"
+        ]
+      }
+    },
+    "/apis/v2beta1/runs/{run_id}/executions": {
+      "get": {
+        "summary": "Lists the ML Metadata executions corresponding to tasks in a run.",
+        "operationId": "RunService_ListRunExecutions",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ListRunExecutionsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RunService"
+        ]
+      }
+    },
+    "/apis/v2beta1/runs/{run_id}/executions/{execution_id}": {
+      "get": {
+        "summary": "Returns one ML Metadata execution after verifying that it belongs to the\nrequested run.",
+        "operationId": "RunService_GetRunExecution",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1RunExecution"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "execution_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "RunService"
+        ]
+      }
+    },
+    "/apis/v2beta1/runs/{run_id}/lineage": {
+      "get": {
+        "summary": "Returns the task-to-artifact lineage graph for a run.",
+        "operationId": "RunService_GetRunLineage",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1RunLineage"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RunService"
+        ]
+      }
+    },
+    "/apis/v2beta1/runs/{run_id}/tasks": {
+      "get": {
+        "summary": "Lists the pipeline tasks belonging to a run. Execution IDs and pod names\nare enriched from ML Metadata when persistence data is incomplete.",
+        "operationId": "RunService_ListRunTasks",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ListRunTasksResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "RunService"
+        ]
+      }
+    },
+    "/apis/v2beta1/runs/{run_id}/tasks/{task_id}": {
+      "get": {
+        "summary": "Returns one task and its corresponding ML Metadata execution and artifacts.",
+        "operationId": "RunService_GetRunTask",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1RunTask"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
             "type": "string"
           }
         ],
@@ -1562,6 +2153,22 @@
     }
   },
   "definitions": {
+    "quotaLimitsResponse": {
+      "type": "object",
+      "required": ["project_id", "limits"],
+      "properties": {
+        "project_id": {"type": "string", "format": "uuid"},
+        "limits": {
+          "type": "object",
+          "properties": {
+            "ai_pipeline_cpu": {"type": "integer", "format": "int64"},
+            "ai_pipeline_memory": {"type": "integer", "format": "int64"},
+            "ai_pipeline_gpu_rtx2080": {"type": "integer", "format": "int64"},
+            "ai_pipeline_gpu_h200": {"type": "integer", "format": "int64"}
+          }
+        }
+      }
+    },
     "AuthorizeRequestResources": {
       "type": "string",
       "enum": [
@@ -1592,7 +2199,7 @@
         },
         "message": {
           "type": "string",
-          "description": "A developer-facing error message, which should be in English. Any\nuser-facing error message should be localized and sent in the\n[google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client."
+          "description": "A developer-facing error message, which should be in English. Any\r\nuser-facing error message should be localized and sent in the\r\n[google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client."
         },
         "details": {
           "type": "array",
@@ -1600,10 +2207,10 @@
             "type": "object",
             "$ref": "#/definitions/protobufAny"
           },
-          "description": "A list of messages that carry the error details.  There is a common set of\nmessage types for APIs to use."
+          "description": "A list of messages that carry the error details.  There is a common set of\r\nmessage types for APIs to use."
         }
       },
-      "description": "The `Status` type defines a logical error model that is suitable for\ndifferent programming environments, including REST APIs and RPC APIs. It is\nused by [gRPC](https://github.com/grpc). Each `Status` message contains\nthree pieces of data: error code, error message, and error details.\n\nYou can find out more about this error model and how to work with it in the\n[API Design Guide](https://cloud.google.com/apis/design/errors)."
+      "description": "The `Status` type defines a logical error model that is suitable for\r\ndifferent programming environments, including REST APIs and RPC APIs. It is\r\nused by [gRPC](https://github.com/grpc). Each `Status` message contains\r\nthree pieces of data: error code, error message, and error details.\r\n\r\nYou can find out more about this error model and how to work with it in the\r\n[API Design Guide](https://cloud.google.com/apis/design/errors)."
     },
     "protobufAny": {
       "type": "object",
@@ -1630,7 +2237,7 @@
       "properties": {
         "experiment_id": {
           "type": "string",
-          "description": "Output. Unique experiment ID. Generated by API server."
+          "description": "Optional input. Unique experiment ID. If omitted, the API server generates one."
         },
         "display_name": {
           "type": "string",
@@ -1742,7 +2349,7 @@
           "description": "All predicates are AND-ed when this filter is applied."
         }
       },
-      "description": "Filter is used to filter resources returned from a ListXXX request.\n\nExample filters:\n1) Filter runs with status = 'Running'\nfilter {\n  predicate {\n    key: \"status\"\n    operation: EQUALS\n    string_value: \"Running\"\n  }\n}\n\n2) Filter runs that succeeded since Dec 1, 2018\nfilter {\n  predicate {\n    key: \"status\"\n    operation: EQUALS\n    string_value: \"Succeeded\"\n  }\n  predicate {\n    key: \"created_at\"\n    operation: GREATER_THAN\n    timestamp_value {\n      seconds: 1543651200\n    }\n  }\n}\n\n3) Filter runs with one of labels 'label_1' or 'label_2'\n\nfilter {\n  predicate {\n    key: \"label\"\n    operation: IN\n    string_values {\n      value: 'label_1'\n      value: 'label_2'\n    }\n  }\n}"
+      "title": "Filter is used to filter resources returned from a ListXXX request.\r\n\r\nExample filters:\r\n1) Filter runs with status = 'Running'\r\nfilter {\r\n  predicate {\r\n    key: \"status\"\r\n    operation: EQUALS\r\n    string_value: \"Running\"\r\n  }\r\n}\r\n\r\n2) Filter runs that succeeded since Dec 1, 2018\r\nfilter {\r\n  predicate {\r\n    key: \"status\"\r\n    operation: EQUALS\r\n    string_value: \"Succeeded\"\r\n  }\r\n  predicate {\r\n    key: \"created_at\"\r\n    operation: GREATER_THAN\r\n    timestamp_value {\r\n      seconds: 1543651200\r\n    }\r\n  }\r\n}\r\n\r\n3) Filter runs with one of labels 'label_1' or 'label_2'\r\n\r\nfilter {\r\n  predicate {\r\n    key: \"label\"\r\n    operation: IN\r\n    string_values {\r\n      value: 'label_1'\r\n      value: 'label_2'\r\n    }\r\n  }\r\n}"
     },
     "v2beta1Predicate": {
       "type": "object",
@@ -1771,7 +2378,7 @@
         "timestamp_value": {
           "type": "string",
           "format": "date-time",
-          "description": "Timestamp values will be converted to Unix time (seconds since the epoch)\nprior to being used in a filtering operation."
+          "description": "Timestamp values will be converted to Unix time (seconds since the epoch)\r\nprior to being used in a filtering operation."
         },
         "int_values": {
           "$ref": "#/definitions/PredicateIntValues",
@@ -1786,7 +2393,7 @@
           "description": "List of strings."
         }
       },
-      "description": "Predicate captures individual conditions that must be true for a resource\nbeing filtered."
+      "description": "Predicate captures individual conditions that must be true for a resource\r\nbeing filtered."
     },
     "v2beta1PredicateOperation": {
       "type": "string",
@@ -1802,15 +2409,14 @@
         "IS_SUBSTRING"
       ],
       "default": "OPERATION_UNSPECIFIED",
-      "description": "Operation is the operation to apply.\n\n - OPERATION_UNSPECIFIED: Default operation. This operation is not used.\n - EQUALS: Operation on scalar values. Only applies to one of |int_value|,\n|long_value|, |string_value| or |timestamp_value|.\n - NOT_EQUALS: Negated EQUALS.\n - GREATER_THAN: Greater than operation.\n - GREATER_THAN_EQUALS: Greater than or equals operation.\n - LESS_THAN: Less than operation.\n - LESS_THAN_EQUALS: Less than or equals operation\n - IN: Checks if the value is a member of a given array, which should be one of\n|int_values|, |long_values| or |string_values|.\n - IS_SUBSTRING: Checks if the value contains |string_value| as a substring match. Only\napplies to |string_value|."
+      "description": "Operation is the operation to apply.\n\n - OPERATION_UNSPECIFIED: Default operation. This operation is not used.\n - EQUALS: Operation on scalar values. Only applies to one of |int_value|,\r\n|long_value|, |string_value| or |timestamp_value|.\n - NOT_EQUALS: Negated EQUALS.\n - GREATER_THAN: Greater than operation.\n - GREATER_THAN_EQUALS: Greater than or equals operation.\n - LESS_THAN: Less than operation.\n - LESS_THAN_EQUALS: Less than or equals operation\n - IN: Checks if the value is a member of a given array, which should be one of\r\n|int_values|, |long_values| or |string_values|.\n - IS_SUBSTRING: Checks if the value contains |string_value| as a substring match. Only\r\napplies to |string_value|."
     },
     "v2beta1GetHealthzResponse": {
       "type": "object",
       "properties": {
         "multi_user": {
           "type": "boolean",
-          "description": "Returns if KFP in multi-user mode",
-          "title": "TODO(gkcalat): redesign this service to return status\nand move server configuration into a separate service\nTODO(gkcalat): rename or deprecate v1beta1 HealthzService"
+          "title": "TODO(gkcalat): redesign this service to return status\r\nand move server configuration into a separate service\r\nTODO(gkcalat): rename or deprecate v1beta1 HealthzService\r\n\r\nReturns if KFP in multi-user mode"
         },
         "pipeline_store": {
           "type": "string",
@@ -1835,7 +2441,20 @@
         },
         "pipeline_version": {
           "$ref": "#/definitions/v2beta1PipelineVersion",
-          "description": "Required input. Pipeline version (child) to be created.\nPipeline spec will be downloaded from pipeline_version.package_url."
+          "description": "Required input. Pipeline version (child) to be created.\r\nPipeline spec will be downloaded from pipeline_version.package_url."
+        }
+      }
+    },
+    "v2beta1CreatePipelineAndVersionResponse": {
+      "type": "object",
+      "properties": {
+        "pipeline": {
+          "$ref": "#/definitions/v2beta1Pipeline",
+          "description": "The newly created parent pipeline."
+        },
+        "pipeline_version": {
+          "$ref": "#/definitions/v2beta1PipelineVersion",
+          "description": "The newly created initial pipeline version containing the executable spec."
         }
       }
     },
@@ -1879,7 +2498,7 @@
         },
         "next_page_token": {
           "type": "string",
-          "description": "The token to list the next page of pipelines.\nThis token can be used on the next ListPipelinesRequest."
+          "description": "The token to list the next page of pipelines.\r\nThis token can be used on the next ListPipelinesRequest."
         }
       }
     },
@@ -1957,6 +2576,10 @@
           "type": "object",
           "description": "Output. The pipeline spec for the pipeline version."
         },
+        "resource_envelope": {
+          "type": "object",
+          "description": "Output. Peak Kubernetes resource requests and limits calculated from the immutable pipeline version. The calculation field is EXACT, UPPER_BOUND, or UNKNOWN; warnings explain conservative or unresolved cases."
+        },
         "error": {
           "$ref": "#/definitions/googlerpcStatus",
           "description": "In case any error happens retrieving a pipeline version field, only\npipeline ID, pipeline version ID, and the error message are returned. \nClient has the flexibility of choosing how to handle the error. \nThis is especially useful during List() calls."
@@ -1972,6 +2595,100 @@
         }
       }
     },
+    "v2beta1ProjectProvisionRequest": {
+      "type": "object",
+      "required": [
+        "project_id",
+        "name",
+        "namespace"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Project UUID stored in the project-id namespace label."
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63,
+          "description": "Project slug stored in the project-slug namespace label."
+        },
+        "namespace": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63,
+          "description": "Kubernetes namespace to provision."
+        }
+      }
+    },
+    "v2beta1ProjectListResponse": {
+      "type": "object",
+      "required": ["projects"],
+      "properties": {
+        "projects": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/v2beta1ProjectProvisionResponse"}
+        }
+      }
+    },
+    "v2beta1ProjectProvisionResponse": {
+      "type": "object",
+      "required": [
+        "project_id",
+        "name",
+        "namespace",
+        "status",
+        "labels"
+      ],
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "CREATED",
+            "UPDATED",
+            "UNCHANGED",
+            "AVAILABLE"
+          ],
+          "description": "Result of the idempotent provisioning operation."
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Labels present on the resulting namespace."
+        }
+      }
+    },
+    "v2beta1ProjectError": {
+      "type": "object",
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Canonical gRPC status code."
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
     "RecurringRunMode": {
       "type": "string",
       "enum": [
@@ -1980,7 +2697,7 @@
         "DISABLE"
       ],
       "default": "MODE_UNSPECIFIED",
-      "description": "Required input.\nUser setting to enable or disable the recurring run.\nOnly used for creation of recurring runs. Later updates use enable/disable API.\n\n - DISABLE: The recurring run won't schedule any run if disabled."
+      "description": "Required input.\r\nUser setting to enable or disable the recurring run.\r\nOnly used for creation of recurring runs. Later updates use enable/disable API.\n\n - DISABLE: The recurring run won't schedule any run if disabled."
     },
     "v2beta1CronSchedule": {
       "type": "object",
@@ -1997,7 +2714,7 @@
         },
         "cron": {
           "type": "string",
-          "title": "The cron string. For details how to compose a cron, visit\nttps://en.wikipedia.org/wiki/Cron"
+          "title": "The cron string. For details how to compose a cron, visit\r\nttps://en.wikipedia.org/wiki/Cron"
         }
       },
       "description": "CronSchedule allow scheduling the recurring run with unix-like cron."
@@ -2107,11 +2824,11 @@
         "max_concurrency": {
           "type": "string",
           "format": "int64",
-          "description": "Required input field.\nSpecifies how many runs can be executed concurrently. Range [1-10]."
+          "description": "Required input field.\r\nSpecifies how many runs can be executed concurrently. Range [1-10]."
         },
         "trigger": {
           "$ref": "#/definitions/v2beta1Trigger",
-          "description": "Required input field.\nSpecifies how a run is triggered. Support cron mode or periodic mode."
+          "description": "Required input field.\r\nSpecifies how a run is triggered. Support cron mode or periodic mode."
         },
         "mode": {
           "$ref": "#/definitions/RecurringRunMode"
@@ -2131,15 +2848,15 @@
         },
         "error": {
           "$ref": "#/definitions/googlerpcStatus",
-          "description": "In case any error happens retrieving a recurring run field, only recurring run ID\nand the error message is returned. Client has the flexibility of choosing\nhow to handle the error. This is especially useful during listing call."
+          "description": "In case any error happens retrieving a recurring run field, only recurring run ID\r\nand the error message is returned. Client has the flexibility of choosing\r\nhow to handle the error. This is especially useful during listing call."
         },
         "no_catchup": {
           "type": "boolean",
-          "description": "Optional input field. Whether the recurring run should catch up if behind schedule.\nIf true, the recurring run will only schedule the latest interval if behind schedule.\nIf false, the recurring run will catch up on each past interval."
+          "description": "Optional input field. Whether the recurring run should catch up if behind schedule.\r\nIf true, the recurring run will only schedule the latest interval if behind schedule.\r\nIf false, the recurring run will catch up on each past interval."
         },
         "namespace": {
           "type": "string",
-          "description": "TODO (gkclat): consider removing this field if it can be obtained from the parent experiment.\nOutput only. Namespace this recurring run belongs to. Derived from the parent experiment.",
+          "description": "TODO (gkclat): consider removing this field if it can be obtained from the parent experiment.\r\nOutput only. Namespace this recurring run belongs to. Derived from the parent experiment.",
           "readOnly": true
         },
         "experiment_id": {
@@ -2164,11 +2881,11 @@
         "parameters": {
           "type": "object",
           "additionalProperties": {},
-          "description": "The runtime parameters of the Pipeline. The parameters will be\nused to replace the placeholders at runtime."
+          "description": "The runtime parameters of the Pipeline. The parameters will be\r\nused to replace the placeholders at runtime."
         },
         "pipeline_root": {
           "type": "string",
-          "title": "A path in a object store bucket which will be treated as the root\noutput directory of the pipeline. It is used by the system to\ngenerate the paths of output artifacts. \nRef:(https://www.kubeflow.org/docs/components/pipelines/pipeline-root/)"
+          "title": "A path in a object store bucket which will be treated as the root\r\noutput directory of the pipeline. It is used by the system to\r\ngenerate the paths of output artifacts. \r\nRef:(https://www.kubeflow.org/docs/components/pipelines/pipeline-root/)"
         }
       },
       "description": "The runtime config."
@@ -2194,10 +2911,10 @@
         },
         "pod_name": {
           "type": "string",
-          "description": "Name of the corresponding pod assigned by the orchestration engine.\nAlso known as node_id."
+          "description": "Name of the corresponding pod assigned by the orchestration engine.\r\nAlso known as node_id."
         }
       },
-      "description": "A dependent task that requires this one to succeed.\nRepresented by either task_id or pod_name."
+      "description": "A dependent task that requires this one to succeed.\r\nRepresented by either task_id or pod_name."
     },
     "v2beta1ArtifactList": {
       "type": "object",
@@ -2212,6 +2929,59 @@
         }
       },
       "description": "A list of artifact metadata."
+    },
+    "v2beta1ListRunArtifactsResponse": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1RunArtifact"
+          }
+        }
+      }
+    },
+    "v2beta1ListRunExecutionsResponse": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "executions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1RunExecution"
+          }
+        },
+        "total_size": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "v2beta1ListRunTasksResponse": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1PipelineTaskDetail"
+          }
+        },
+        "total_size": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
     },
     "v2beta1ListRunsResponse": {
       "type": "object",
@@ -2248,7 +3018,7 @@
         },
         "display_name": {
           "type": "string",
-          "description": "User specified name of a task that is defined in\n[Pipeline.spec][]."
+          "description": "User specified name of a task that is defined in\r\n[Pipeline.spec][]."
         },
         "create_time": {
           "type": "string",
@@ -2280,7 +3050,7 @@
         },
         "error": {
           "$ref": "#/definitions/googlerpcStatus",
-          "description": "The error that occurred during task execution.\nOnly populated when the task is in FAILED or CANCELED state."
+          "description": "The error that occurred during task execution.\r\nOnly populated when the task is in FAILED or CANCELED state."
         },
         "inputs": {
           "type": "object",
@@ -2298,7 +3068,7 @@
         },
         "parent_task_id": {
           "type": "string",
-          "description": "ID of the parent task if the task is within a component scope.\nEmpty if the task is at the root level."
+          "description": "ID of the parent task if the task is within a component scope.\r\nEmpty if the task is at the root level."
         },
         "state_history": {
           "type": "array",
@@ -2306,11 +3076,11 @@
             "type": "object",
             "$ref": "#/definitions/v2beta1RuntimeStatus"
           },
-          "description": "A sequence of task statuses. This field keeps a record\nof state transitions."
+          "description": "A sequence of task statuses. This field keeps a record\r\nof state transitions."
         },
         "pod_name": {
           "type": "string",
-          "description": "Name of the corresponding pod assigned by the orchestration engine.\nAlso known as node_id."
+          "description": "Name of the corresponding pod assigned by the orchestration engine.\r\nAlso known as node_id."
         },
         "child_tasks": {
           "type": "array",
@@ -2332,21 +3102,21 @@
         },
         "pre_caching_check_job": {
           "type": "string",
-          "description": "The name of the job for the pre-caching-check container\nexecution. This job will be available if the\nRun.pipeline_spec specifies the `pre_caching_check` hook in\nthe lifecycle events."
+          "description": "The name of the job for the pre-caching-check container\r\nexecution. This job will be available if the\r\nRun.pipeline_spec specifies the `pre_caching_check` hook in\r\nthe lifecycle events."
         },
         "failed_main_jobs": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "The names of the previously failed job for the main container\nexecutions. The list includes the all attempts in chronological order."
+          "description": "The names of the previously failed job for the main container\r\nexecutions. The list includes the all attempts in chronological order."
         },
         "failed_pre_caching_check_jobs": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "The names of the previously failed job for the\npre-caching-check container executions. This job will be available if the\nRun.pipeline_spec specifies the `pre_caching_check` hook in\nthe lifecycle events.\nThe list includes the all attempts in chronological order."
+          "description": "The names of the previously failed job for the\r\npre-caching-check container executions. This job will be available if the\r\nRun.pipeline_spec specifies the `pre_caching_check` hook in\r\nthe lifecycle events.\r\nThe list includes the all attempts in chronological order."
         }
       },
       "description": "Runtime information of a pipeline task executor."
@@ -2356,7 +3126,7 @@
       "properties": {
         "experiment_id": {
           "type": "string",
-          "description": "Input. ID of the parent experiment.\nThe default experiment ID will be used if this is not specified."
+          "description": "Input. ID of the parent experiment.\r\nThe default experiment ID will be used if this is not specified."
         },
         "run_id": {
           "type": "string",
@@ -2364,7 +3134,7 @@
         },
         "display_name": {
           "type": "string",
-          "description": "Required input. Name provided by user,\nor auto generated if run is created by a recurring run."
+          "description": "Required input. Name provided by user,\r\nor auto generated if run is created by a recurring run."
         },
         "storage_state": {
           "$ref": "#/definitions/v2beta1RunStorageState",
@@ -2402,7 +3172,7 @@
         "scheduled_at": {
           "type": "string",
           "format": "date-time",
-          "description": "Output. When this run is scheduled to start. This could be different from\ncreated_at. For example, if a run is from a backfilling job that was supposed\nto run 2 month ago, the created_at will be 2 month behind scheduled_at."
+          "description": "Output. When this run is scheduled to start. This could be different from\r\ncreated_at. For example, if a run is from a backfilling job that was supposed\r\nto run 2 month ago, the created_at will be 2 month behind scheduled_at."
         },
         "finished_at": {
           "type": "string",
@@ -2415,7 +3185,7 @@
         },
         "error": {
           "$ref": "#/definitions/googlerpcStatus",
-          "description": "In case any error happens retrieving a run field, only run ID\nand the error message is returned. Client has the flexibility of choosing\nhow to handle the error. This is especially useful during listing call."
+          "description": "In case any error happens retrieving a run field, only run ID\r\nand the error message is returned. Client has the flexibility of choosing\r\nhow to handle the error. This is especially useful during listing call."
         },
         "run_details": {
           "$ref": "#/definitions/v2beta1RunDetails",
@@ -2431,9 +3201,90 @@
             "type": "object",
             "$ref": "#/definitions/v2beta1RuntimeStatus"
           },
-          "description": "Output. A sequence of run statuses. This field keeps a record\nof state transitions."
+          "description": "Output. A sequence of run statuses. This field keeps a record\r\nof state transitions."
         }
       }
+    },
+    "v2beta1RunArtifact": {
+      "type": "object",
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "format": "int64",
+          "description": "ML Metadata artifact ID."
+        },
+        "type_id": {
+          "type": "string",
+          "format": "int64",
+          "description": "ML Metadata artifact type ID and name."
+        },
+        "type_name": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "description": "ML Metadata artifact name and physical storage URI."
+        },
+        "uri": {
+          "type": "string"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "description": "ML Metadata artifact state, for example LIVE or DELETED."
+        },
+        "properties": {
+          "type": "object",
+          "description": "Typed and custom ML Metadata properties converted to JSON values."
+        },
+        "custom_properties": {
+          "type": "object"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "usages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1RunArtifactUsage"
+          },
+          "description": "All task/execution relationships for this artifact within this run."
+        }
+      },
+      "description": "An artifact consumed or produced by a task in a run."
+    },
+    "v2beta1RunArtifactUsage": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string"
+        },
+        "execution_id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "key": {
+          "type": "string",
+          "description": "Artifact input/output name taken from the ML Metadata event path."
+        },
+        "event_type": {
+          "type": "string",
+          "description": "ML Metadata event type, for example INPUT, OUTPUT, INTERNAL_INPUT,\nINTERNAL_OUTPUT, DECLARED_INPUT, DECLARED_OUTPUT or PENDING_OUTPUT."
+        },
+        "recorded_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "description": "A relationship between an ML Metadata artifact and a task execution."
     },
     "v2beta1RunDetails": {
       "type": "object",
@@ -2459,6 +3310,139 @@
       },
       "description": "Runtime details of a run."
     },
+    "v2beta1RunExecution": {
+      "type": "object",
+      "properties": {
+        "execution_id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "type_id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "type_name": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "external_id": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object"
+        },
+        "custom_properties": {
+          "type": "object"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "task_id": {
+          "type": "string",
+          "description": "Pipeline task and orchestration pod corresponding to this execution."
+        },
+        "pod_name": {
+          "type": "string"
+        },
+        "input_artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1RunArtifact"
+          },
+          "description": "Populated by GetRunExecution. ListRunExecutions returns execution\nsummaries and leaves these fields empty to keep list responses compact."
+        },
+        "output_artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1RunArtifact"
+          }
+        }
+      },
+      "description": "ML Metadata execution corresponding to a pipeline task."
+    },
+    "v2beta1RunLineage": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1RunLineageNode"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1RunLineageEdge"
+          }
+        }
+      }
+    },
+    "v2beta1RunLineageEdge": {
+      "type": "object",
+      "properties": {
+        "source_node_id": {
+          "type": "string"
+        },
+        "target_node_id": {
+          "type": "string"
+        },
+        "task_id": {
+          "type": "string"
+        },
+        "execution_id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "artifact_id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "key": {
+          "type": "string"
+        },
+        "event_type": {
+          "type": "string"
+        },
+        "recorded_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "description": "A directed ML Metadata event edge in a run lineage graph."
+    },
+    "v2beta1RunLineageNode": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "description": "Stable graph-local ID: task:<task_id> or artifact:<artifact_id>."
+        },
+        "task": {
+          "$ref": "#/definitions/v2beta1PipelineTaskDetail"
+        },
+        "artifact": {
+          "$ref": "#/definitions/v2beta1RunArtifact"
+        }
+      },
+      "description": "A task or artifact node in a run lineage graph."
+    },
     "v2beta1RunStorageState": {
       "type": "string",
       "enum": [
@@ -2468,6 +3452,32 @@
       ],
       "default": "STORAGE_STATE_UNSPECIFIED",
       "description": "Describes whether an entity is available or archived.\n\n - STORAGE_STATE_UNSPECIFIED: Default state. This state in not used\n - AVAILABLE: Entity is available.\n - ARCHIVED: Entity is archived."
+    },
+    "v2beta1RunTask": {
+      "type": "object",
+      "properties": {
+        "task": {
+          "$ref": "#/definitions/v2beta1PipelineTaskDetail"
+        },
+        "execution": {
+          "$ref": "#/definitions/v2beta1RunExecution"
+        },
+        "input_artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1RunArtifact"
+          }
+        },
+        "output_artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2beta1RunArtifact"
+          }
+        }
+      },
+      "description": "Detailed view of one task in a run."
     },
     "v2beta1RuntimeState": {
       "type": "string",
@@ -2483,7 +3493,7 @@
         "PAUSED"
       ],
       "default": "RUNTIME_STATE_UNSPECIFIED",
-      "description": "Describes the runtime state of an entity.\n\n - RUNTIME_STATE_UNSPECIFIED: Default value. This value is not used.\n - PENDING: Service is preparing to execute an entity.\n - RUNNING: Entity execution is in progress.\n - SUCCEEDED: Entity completed successfully.\n - SKIPPED: Entity has been skipped. For example, due to caching.\n - FAILED: Entity execution has failed.\n - CANCELING: Entity is being canceled. From this state, an entity may only\nchange its state to SUCCEEDED, FAILED or CANCELED.\n - CANCELED: Entity has been canceled.\n - PAUSED: Entity has been paused. It can be resumed."
+      "description": "Describes the runtime state of an entity.\n\n - RUNTIME_STATE_UNSPECIFIED: Default value. This value is not used.\n - PENDING: Service is preparing to execute an entity.\n - RUNNING: Entity execution is in progress.\n - SUCCEEDED: Entity completed successfully.\n - SKIPPED: Entity has been skipped. For example, due to caching.\n - FAILED: Entity execution has failed.\n - CANCELING: Entity is being canceled. From this state, an entity may only\r\nchange its state to SUCCEEDED, FAILED or CANCELED.\n - CANCELED: Entity has been canceled.\n - PAUSED: Entity has been paused. It can be resumed."
     },
     "v2beta1RuntimeStatus": {
       "type": "object",
@@ -2499,7 +3509,7 @@
         },
         "error": {
           "$ref": "#/definitions/googlerpcStatus",
-          "description": "The error that occurred during the state. May be set when the state is\nany of the non-final states (PENDING/RUNNING/CANCELING) or FAILED state.\nIf the state is FAILED, the error here is final and not going to be\nretried. If the state is a non-final state, the error indicates that a\nsystem-error being retried."
+          "description": "The error that occurred during the state. May be set when the state is\r\nany of the non-final states (PENDING/RUNNING/CANCELING) or FAILED state.\r\nIf the state is FAILED, the error here is final and not going to be\r\nretried. If the state is a non-final state, the error indicates that a\r\nsystem-error being retried."
         }
       },
       "description": "Timestamped representation of a runtime state with an optional error."
@@ -2512,11 +3522,11 @@
         },
         "source": {
           "type": "string",
-          "description": "Path pattern of input data to be used during generation of visualizations.\nThis is required when creating the pipeline through CreateVisualization\nAPI."
+          "description": "Path pattern of input data to be used during generation of visualizations.\r\nThis is required when creating the pipeline through CreateVisualization\r\nAPI."
         },
         "arguments": {
           "type": "string",
-          "description": "Variables to be used during generation of a visualization.\nThis should be provided as a JSON string.\nThis is required when creating the pipeline through CreateVisualization\nAPI."
+          "description": "Variables to be used during generation of a visualization.\r\nThis should be provided as a JSON string.\r\nThis is required when creating the pipeline through CreateVisualization\r\nAPI."
         },
         "html": {
           "type": "string",
@@ -2524,7 +3534,7 @@
         },
         "error": {
           "type": "string",
-          "description": "In case any error happens when generating visualizations, only\nvisualization ID and the error message are returned. Client has the\nflexibility of choosing how to handle the error."
+          "description": "In case any error happens when generating visualizations, only\r\nvisualization ID and the error message are returned. Client has the\r\nflexibility of choosing how to handle the error."
         }
       }
     },
@@ -2538,7 +3548,7 @@
         "CUSTOM"
       ],
       "default": "ROC_CURVE",
-      "description": "Type of visualization to be generated.\nThis is required when creating the pipeline through CreateVisualization\nAPI."
+      "description": "Type of visualization to be generated.\r\nThis is required when creating the pipeline through CreateVisualization\r\nAPI."
     }
   },
   "securityDefinitions": {

@@ -1,0 +1,219 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Kubeflow Pipelines Project Provisioning API",
+    "description": "Idempotently provisions Kubernetes namespaces and their pipeline runtime access for AI pipeline projects.",
+    "version": "version not set"
+  },
+  "schemes": ["http", "https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "paths": {
+    "/apis/v2beta1/projects": {
+      "get": {
+        "summary": "List managed projects",
+        "description": "Lists project namespaces managed by pipeline-core.",
+        "operationId": "ListProjects",
+        "responses": {
+          "200": {
+            "description": "Managed projects.",
+            "schema": {"$ref": "#/definitions/v2beta1ProjectListResponse"}
+          },
+          "403": {
+            "description": "The caller is not authorized to list projects.",
+            "schema": {"$ref": "#/definitions/v2beta1ProjectError"}
+          },
+          "500": {
+            "description": "Project listing failed.",
+            "schema": {"$ref": "#/definitions/v2beta1ProjectError"}
+          }
+        },
+        "tags": ["ProjectService"]
+      },
+      "post": {
+        "summary": "Provision a project namespace and pipeline runtime",
+        "description": "Creates or reconciles the namespace, pipeline-runner ServiceAccount, RoleBinding, and artifact credential Secret. Repeating the same request is safe. Conflicting managed metadata or runtime resources return HTTP 409 and are never overwritten.",
+        "operationId": "ProvisionProject",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2beta1ProjectProvisionRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The namespace already existed and was unchanged or updated with missing labels.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ProjectProvisionResponse"
+            }
+          },
+          "201": {
+            "description": "The namespace was created.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ProjectProvisionResponse"
+            }
+          },
+          "400": {
+            "description": "The request is malformed or contains invalid identifiers.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ProjectError"
+            }
+          },
+          "403": {
+            "description": "The caller is not authorized to provision namespaces.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ProjectError"
+            }
+          },
+          "409": {
+            "description": "The namespace has conflicting project-management labels.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ProjectError"
+            }
+          },
+          "500": {
+            "description": "Namespace provisioning failed.",
+            "schema": {
+              "$ref": "#/definitions/v2beta1ProjectError"
+            }
+          }
+        },
+        "tags": ["ProjectService"]
+      }
+    },
+    "/apis/v2beta1/projects/{project_id}": {
+      "get": {
+        "summary": "Get a managed project",
+        "description": "Returns the managed project namespace identified by project UUID.",
+        "operationId": "GetProject",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uuid",
+            "description": "Project UUID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Managed project.",
+            "schema": {"$ref": "#/definitions/v2beta1ProjectProvisionResponse"}
+          },
+          "400": {
+            "description": "The project ID is invalid.",
+            "schema": {"$ref": "#/definitions/v2beta1ProjectError"}
+          },
+          "403": {
+            "description": "The caller is not authorized to get projects.",
+            "schema": {"$ref": "#/definitions/v2beta1ProjectError"}
+          },
+          "404": {
+            "description": "The project was not found.",
+            "schema": {"$ref": "#/definitions/v2beta1ProjectError"}
+          },
+          "500": {
+            "description": "Project lookup failed.",
+            "schema": {"$ref": "#/definitions/v2beta1ProjectError"}
+          }
+        },
+        "tags": ["ProjectService"]
+      }
+    }
+  },
+  "definitions": {
+    "v2beta1ProjectListResponse": {
+      "type": "object",
+      "required": ["projects"],
+      "properties": {
+        "projects": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/v2beta1ProjectProvisionResponse"}
+        }
+      }
+    },
+    "v2beta1ProjectProvisionRequest": {
+      "type": "object",
+      "required": ["project_id", "name", "namespace"],
+      "additionalProperties": false,
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Project UUID stored in the project-id namespace label."
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63,
+          "description": "Project slug stored in the project-slug namespace label."
+        },
+        "namespace": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63,
+          "description": "Kubernetes namespace to provision."
+        }
+      }
+    },
+    "v2beta1ProjectProvisionResponse": {
+      "type": "object",
+      "required": ["project_id", "name", "namespace", "status", "labels"],
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["CREATED", "UPDATED", "UNCHANGED", "AVAILABLE"],
+          "description": "Result of the idempotent provisioning operation."
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Labels present on the resulting namespace."
+        }
+      }
+    },
+    "v2beta1ProjectError": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Canonical gRPC status code."
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "securityDefinitions": {
+    "Bearer": {
+      "type": "apiKey",
+      "name": "authorization",
+      "in": "header"
+    }
+  },
+  "security": [
+    {
+      "Bearer": []
+    }
+  ]
+}

@@ -61,17 +61,45 @@ UploadPipelineParams contains all the parameters to send to the API endpoint
 */
 type UploadPipelineParams struct {
 
-	// Description.
+	/* Description.
+
+	   Optional description for the pipeline.
+	*/
 	Description *string
 
-	// DisplayName.
+	/* DisplayName.
+
+	   Optional display name for the pipeline.
+	*/
 	DisplayName *string
 
-	// Name.
+	/* Name.
+
+	   Optional pipeline name. If omitted, the name is derived from the uploaded package.
+	*/
 	Name *string
 
-	// Namespace.
+	/* Namespace.
+
+	   Namespace that owns the pipeline. If omitted, the API server resolves the default namespace.
+	*/
 	Namespace *string
+
+	/* PipelineID.
+
+	   Optional client-provided ID for the parent pipeline. If omitted, the database-backed API server generates one.
+
+	   Format: uuid
+	*/
+	PipelineID *strfmt.UUID
+
+	/* PipelineVersionID.
+
+	   Optional client-provided ID for the initial pipeline version. If omitted, the database-backed API server generates one.
+
+	   Format: uuid
+	*/
+	PipelineVersionID *strfmt.UUID
 
 	/* Uploadfile.
 
@@ -176,6 +204,28 @@ func (o *UploadPipelineParams) SetNamespace(namespace *string) {
 	o.Namespace = namespace
 }
 
+// WithPipelineID adds the pipelineID to the upload pipeline params
+func (o *UploadPipelineParams) WithPipelineID(pipelineID *strfmt.UUID) *UploadPipelineParams {
+	o.SetPipelineID(pipelineID)
+	return o
+}
+
+// SetPipelineID adds the pipelineId to the upload pipeline params
+func (o *UploadPipelineParams) SetPipelineID(pipelineID *strfmt.UUID) {
+	o.PipelineID = pipelineID
+}
+
+// WithPipelineVersionID adds the pipelineVersionID to the upload pipeline params
+func (o *UploadPipelineParams) WithPipelineVersionID(pipelineVersionID *strfmt.UUID) *UploadPipelineParams {
+	o.SetPipelineVersionID(pipelineVersionID)
+	return o
+}
+
+// SetPipelineVersionID adds the pipelineVersionId to the upload pipeline params
+func (o *UploadPipelineParams) SetPipelineVersionID(pipelineVersionID *strfmt.UUID) {
+	o.PipelineVersionID = pipelineVersionID
+}
+
 // WithUploadfile adds the uploadfile to the upload pipeline params
 func (o *UploadPipelineParams) WithUploadfile(uploadfile runtime.NamedReadCloser) *UploadPipelineParams {
 	o.SetUploadfile(uploadfile)
@@ -258,6 +308,40 @@ func (o *UploadPipelineParams) WriteToRequest(r runtime.ClientRequest, reg strfm
 		if qNamespace != "" {
 
 			if err := r.SetQueryParam("namespace", qNamespace); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.PipelineID != nil {
+
+		// query param pipeline_id
+		var qrPipelineID strfmt.UUID
+
+		if o.PipelineID != nil {
+			qrPipelineID = *o.PipelineID
+		}
+		qPipelineID := qrPipelineID.String()
+		if qPipelineID != "" {
+
+			if err := r.SetQueryParam("pipeline_id", qPipelineID); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.PipelineVersionID != nil {
+
+		// query param pipeline_version_id
+		var qrPipelineVersionID strfmt.UUID
+
+		if o.PipelineVersionID != nil {
+			qrPipelineVersionID = *o.PipelineVersionID
+		}
+		qPipelineVersionID := qrPipelineVersionID.String()
+		if qPipelineVersionID != "" {
+
+			if err := r.SetQueryParam("pipeline_version_id", qPipelineVersionID); err != nil {
 				return err
 			}
 		}

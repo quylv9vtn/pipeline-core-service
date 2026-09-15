@@ -24,6 +24,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -35,6 +36,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	apiv1beta1 "github.com/kubeflow/pipelines/backend/api/v1beta1/go_client"
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	cm "github.com/kubeflow/pipelines/backend/src/apiserver/client_manager"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/common"
@@ -45,6 +47,7 @@ import (
 	"github.com/kubeflow/pipelines/backend/src/apiserver/template"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/webhook"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
+	"github.com/kubeflow/pipelines/backend/src/v2/metadata"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -285,11 +288,27 @@ func startRPCServer(resourceManager *resource.ResourceManager, tlsCfg *tls.Confi
 
 	PipelineServer := server.NewPipelineServer(resourceManager, &server.PipelineServerOptions{CollectMetrics: *collectMetricsFlag})
 
-	RunServer := server.NewRunServer(resourceManager, &server.RunServerOptions{CollectMetrics: *collectMetricsFlag})
+	metadataPort := os.Getenv("METADATA_SERVICE_PORT")
+	if metadataPort == "" {
+		metadataPort = os.Getenv("METADATA_GRPC_SERVICE_SERVICE_PORT")
+	}
+	if metadataPort == "" {
+		metadataPort = "8080"
+	}
+	metadataClient, err := metadata.NewClient(common.GetMetadataServiceName(), metadataPort, nil)
+	if err != nil {
+		glog.Fatalf("Failed to initialize the direct ML Metadata gRPC client: %v", err)
+	}
+	RunServer := server.NewRunServer(resourceManager, &server.RunServerOptions{
+		CollectMetrics: *collectMetricsFlag,
+		MetadataReader: metadataClient,
+	})
 
 	JobServer := server.NewJobServer(resourceManager, &server.JobServerOptions{CollectMetrics: *collectMetricsFlag})
 
 	ReportServer := server.NewReportServer(resourceManager)
+	ReportServerV1 := server.NewReportServerV1(resourceManager)
+	TaskServer := server.NewTaskServer(resourceManager)
 	VisualizationServer := server.NewVisualizationServer(
 		resourceManager,
 		common.GetStringConfig(cm.VisualizationServiceHost),
@@ -302,6 +321,12 @@ func startRPCServer(resourceManager *resource.ResourceManager, tlsCfg *tls.Confi
 	apiv2beta1.RegisterRunServiceServer(s, RunServer)
 	apiv2beta1.RegisterReportServiceServer(s, ReportServer)
 	apiv2beta1.RegisterVisualizationServiceServer(s, VisualizationServer)
+	apiv1beta1.RegisterReportServiceServer(s, ReportServerV1)
+
+	// V2 drivers use this internal service to look up execution-cache entries.
+	// Deliberately register it only on the internal gRPC listener: no V1 HTTP
+	// gateway is exposed by the public API server.
+	apiv1beta1.RegisterTaskServiceServer(s, TaskServer)
 
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
@@ -347,6 +372,24 @@ func startHTTPProxy(resourceManager *resource.ResourceManager, usePipelinesKuber
 	// API v2beta1
 	topMux.HandleFunc("/apis/v2beta1/pipelines/upload", sharedPipelineUploadServer.UploadPipeline)
 	topMux.HandleFunc("/apis/v2beta1/pipelines/upload_version", sharedPipelineUploadServer.UploadPipelineVersion)
+	pipelineDownloadServer := server.NewPipelineDownloadServer(resourceManager)
+	topMux.HandleFunc(
+		"/apis/v2beta1/pipelines/{pipeline_id}/versions/{pipeline_version_id}:download",
+		pipelineDownloadServer.DownloadPipelineVersion,
+	).Methods(http.MethodGet)
+	projectServer := server.NewProjectServer(resourceManager)
+	topMux.HandleFunc("/apis/v2beta1/projects", projectServer.ProvisionProject).Methods(http.MethodPost)
+	topMux.HandleFunc("/apis/v2beta1/projects", projectServer.ListProjects).Methods(http.MethodGet)
+	topMux.HandleFunc("/apis/v2beta1/projects/{project_id}", projectServer.GetProject).Methods(http.MethodGet)
+	quotaServer := server.NewQuotaServer(resourceManager)
+	topMux.HandleFunc("/quota/limits", quotaServer.PutLimits).Methods(http.MethodPut)
+	topMux.HandleFunc("/quota/limits", quotaServer.GetLimits).Methods(http.MethodGet)
+	topMux.HandleFunc("/quota/usage", quotaServer.GetUsage).Methods(http.MethodGet)
+	topMux.HandleFunc("/quota/usage/bulk", quotaServer.GetUsageBulk).Methods(http.MethodPost)
+	topMux.HandleFunc("/apis/v2beta1/quota/limits", quotaServer.PutLimits).Methods(http.MethodPut)
+	topMux.HandleFunc("/apis/v2beta1/quota/limits", quotaServer.GetLimits).Methods(http.MethodGet)
+	topMux.HandleFunc("/apis/v2beta1/quota/usage", quotaServer.GetUsage).Methods(http.MethodGet)
+	topMux.HandleFunc("/apis/v2beta1/quota/usage/bulk", quotaServer.GetUsageBulk).Methods(http.MethodPost)
 	topMux.HandleFunc("/apis/v2beta1/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		io.WriteString(w, `{"commit_sha":"`+common.GetStringConfigWithDefault("COMMIT_SHA", "unknown")+`", "tag_name":"`+common.GetStringConfigWithDefault("TAG_NAME", "unknown")+`", "multi_user":`+strconv.FormatBool(common.IsMultiUserMode())+`, "pipeline_store": "`+pipelineStore+`"}`)

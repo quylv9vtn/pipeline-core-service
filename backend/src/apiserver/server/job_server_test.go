@@ -29,6 +29,7 @@ import (
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/client"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/common"
+	"github.com/kubeflow/pipelines/backend/src/apiserver/model"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/resource"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
 	"github.com/spf13/viper"
@@ -1028,6 +1029,57 @@ func TestCreateRecurringRun(t *testing.T) {
 		"param1": structpb.NewStringValue("world"),
 	}
 	assert.Equal(t, expectedRecurringRun, recurringRun)
+}
+
+func TestCreateRecurringRunInheritsParentPipelineNamespace(t *testing.T) {
+	initEnvVars()
+	clients := resource.NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	defer clients.Close()
+	manager := resource.NewResourceManager(clients, &resource.ResourceManagerOptions{CollectMetrics: false})
+	server := createJobServer(manager)
+
+	pipeline, err := manager.CreatePipeline(&model.Pipeline{
+		UUID:      "11111111-1111-4111-8111-111111111111",
+		Name:      "project-pipeline",
+		Namespace: "project-a",
+	})
+	assert.NoError(t, err)
+	version, err := manager.CreatePipelineVersion(&model.PipelineVersion{
+		UUID:         "22222222-2222-4222-8222-222222222222",
+		Name:         "project-pipeline-v1",
+		PipelineId:   pipeline.UUID,
+		PipelineSpec: model.LargeText(v2SpecHelloWorld),
+	})
+	assert.NoError(t, err)
+	experiment, err := manager.CreateExperiment(&model.Experiment{
+		Name:         "project-experiment",
+		Namespace:    "project-a",
+		StorageState: model.StorageStateAvailable,
+	})
+	assert.NoError(t, err)
+	cronSchedule := "1 * * * *"
+
+	created, err := server.createJob(context.Background(), &model.Job{
+		DisplayName:    "project-recurring-run",
+		ExperimentId:   experiment.UUID,
+		Enabled:        true,
+		MaxConcurrency: 1,
+		Trigger: model.Trigger{CronSchedule: model.CronSchedule{
+			Cron: &cronSchedule,
+		}},
+		PipelineSpec: model.PipelineSpec{
+			PipelineId:        pipeline.UUID,
+			PipelineVersionId: version.UUID,
+			RuntimeConfig: model.RuntimeConfig{
+				Parameters: model.LargeText(`{"param1":"world"}`),
+			},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "project-a", created.Namespace)
+	stored, err := manager.GetJob(created.UUID)
+	assert.NoError(t, err)
+	assert.Equal(t, "project-a", stored.Namespace)
 }
 
 func TestGetRecurringRun(t *testing.T) {

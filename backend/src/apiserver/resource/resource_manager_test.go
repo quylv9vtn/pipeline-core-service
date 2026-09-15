@@ -211,6 +211,92 @@ func initWithExperimentAndPipelineAndRun(t *testing.T) (*FakeClientManager, *Res
 	return store, manager, exp, pipeline, version, run
 }
 
+func TestResolveExecutionNamespaceFromPipelineAndRecurringRun(t *testing.T) {
+	initEnvVars()
+	store := NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	defer store.Close()
+	manager := NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
+
+	pipeline, err := manager.CreatePipeline(&model.Pipeline{
+		UUID:      "11111111-1111-4111-8111-111111111111",
+		Name:      "project-pipeline",
+		Namespace: "project-a",
+	})
+	require.NoError(t, err)
+	version, err := manager.CreatePipelineVersion(&model.PipelineVersion{
+		UUID:         "22222222-2222-4222-8222-222222222222",
+		Name:         "project-pipeline-v1",
+		PipelineId:   pipeline.UUID,
+		PipelineSpec: model.LargeText(v2SpecHelloWorld),
+	})
+	require.NoError(t, err)
+
+	namespace, err := manager.ResolveExecutionNamespace(model.PipelineSpec{PipelineVersionId: version.UUID}, "")
+	require.NoError(t, err)
+	require.Equal(t, "project-a", namespace)
+
+	_, err = manager.ApplyExecutionNamespace("another-project", model.PipelineSpec{PipelineVersionId: version.UUID}, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "does not match parent pipeline namespace")
+
+	job, err := store.JobStore().CreateJob(&model.Job{
+		UUID:        "33333333-3333-4333-8333-333333333333",
+		DisplayName: "project-job",
+		K8SName:     "project-job",
+		Namespace:   "incorrect-job-namespace",
+		PipelineSpec: model.PipelineSpec{
+			PipelineId:        pipeline.UUID,
+			PipelineVersionId: version.UUID,
+		},
+	})
+	require.NoError(t, err)
+	namespace, err = manager.ResolveExecutionNamespace(model.PipelineSpec{}, job.UUID)
+	require.NoError(t, err)
+	require.Equal(t, "project-a", namespace)
+}
+
+func TestGetValidExperimentNamespacePairUsesNamespaceLocalDefault(t *testing.T) {
+	initEnvVars()
+	store := NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	defer store.Close()
+	manager := NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
+
+	globalDefault, err := manager.CreateExperiment(&model.Experiment{
+		Name:         "Default",
+		Namespace:    "ns1",
+		StorageState: model.StorageStateAvailable,
+	})
+	require.NoError(t, err)
+	require.NoError(t, manager.SetDefaultExperimentId(globalDefault.UUID))
+	localUUID := util.NewFakeUUIDGeneratorOrFatal("44444444-4444-4444-8444-444444444444", nil)
+	store.UpdateUUID(localUUID)
+	manager = NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
+
+	experimentId, namespace, err := manager.GetValidExperimentNamespacePair("", "project-a")
+	require.NoError(t, err)
+	require.Equal(t, "project-a", namespace)
+	require.NotEqual(t, globalDefault.UUID, experimentId)
+	localDefault, err := manager.GetExperiment(experimentId)
+	require.NoError(t, err)
+	require.Equal(t, "Default-project-a", localDefault.Name)
+	require.Equal(t, "project-a", localDefault.Namespace)
+
+	secondExperimentId, secondNamespace, err := manager.GetValidExperimentNamespacePair("", "project-a")
+	require.NoError(t, err)
+	require.Equal(t, experimentId, secondExperimentId)
+	require.Equal(t, "project-a", secondNamespace)
+}
+
+func TestReplaceNamespacePreservesExplicitNamespaceInSingleUserMode(t *testing.T) {
+	initEnvVars()
+	store := NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	defer store.Close()
+	manager := NewResourceManager(store, &ResourceManagerOptions{CollectMetrics: false})
+
+	require.Equal(t, "project-a", manager.ReplaceNamespace("project-a"))
+	require.Equal(t, "", manager.ReplaceNamespace(model.NoNamespace))
+}
+
 // Util function to create an initial state with pipeline uploaded
 func initWithJob(t *testing.T) (*FakeClientManager, *ResourceManager, *model.Job) {
 	store, manager, exp := initWithExperiment(t)

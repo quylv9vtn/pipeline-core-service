@@ -921,6 +921,1151 @@ func (x *ArtifactList) GetArtifactIds() []int64 {
 	return nil
 }
 
+// An artifact consumed or produced by a task in a run.
+type RunArtifact struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// ML Metadata artifact ID.
+	ArtifactId int64 `protobuf:"varint,1,opt,name=artifact_id,json=artifactId,proto3" json:"artifact_id,omitempty"`
+	// ML Metadata artifact type ID and name.
+	TypeId   int64  `protobuf:"varint,2,opt,name=type_id,json=typeId,proto3" json:"type_id,omitempty"`
+	TypeName string `protobuf:"bytes,3,opt,name=type_name,json=typeName,proto3" json:"type_name,omitempty"`
+	// ML Metadata artifact name and physical storage URI.
+	Name       string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Uri        string `protobuf:"bytes,5,opt,name=uri,proto3" json:"uri,omitempty"`
+	ExternalId string `protobuf:"bytes,6,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
+	// ML Metadata artifact state, for example LIVE or DELETED.
+	State string `protobuf:"bytes,7,opt,name=state,proto3" json:"state,omitempty"`
+	// Typed and custom ML Metadata properties converted to JSON values.
+	Properties       *structpb.Struct       `protobuf:"bytes,8,opt,name=properties,proto3" json:"properties,omitempty"`
+	CustomProperties *structpb.Struct       `protobuf:"bytes,9,opt,name=custom_properties,json=customProperties,proto3" json:"custom_properties,omitempty"`
+	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	LastUpdatedAt    *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=last_updated_at,json=lastUpdatedAt,proto3" json:"last_updated_at,omitempty"`
+	// All task/execution relationships for this artifact within this run.
+	Usages        []*RunArtifactUsage `protobuf:"bytes,12,rep,name=usages,proto3" json:"usages,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunArtifact) Reset() {
+	*x = RunArtifact{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunArtifact) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunArtifact) ProtoMessage() {}
+
+func (x *RunArtifact) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunArtifact.ProtoReflect.Descriptor instead.
+func (*RunArtifact) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *RunArtifact) GetArtifactId() int64 {
+	if x != nil {
+		return x.ArtifactId
+	}
+	return 0
+}
+
+func (x *RunArtifact) GetTypeId() int64 {
+	if x != nil {
+		return x.TypeId
+	}
+	return 0
+}
+
+func (x *RunArtifact) GetTypeName() string {
+	if x != nil {
+		return x.TypeName
+	}
+	return ""
+}
+
+func (x *RunArtifact) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *RunArtifact) GetUri() string {
+	if x != nil {
+		return x.Uri
+	}
+	return ""
+}
+
+func (x *RunArtifact) GetExternalId() string {
+	if x != nil {
+		return x.ExternalId
+	}
+	return ""
+}
+
+func (x *RunArtifact) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *RunArtifact) GetProperties() *structpb.Struct {
+	if x != nil {
+		return x.Properties
+	}
+	return nil
+}
+
+func (x *RunArtifact) GetCustomProperties() *structpb.Struct {
+	if x != nil {
+		return x.CustomProperties
+	}
+	return nil
+}
+
+func (x *RunArtifact) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *RunArtifact) GetLastUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastUpdatedAt
+	}
+	return nil
+}
+
+func (x *RunArtifact) GetUsages() []*RunArtifactUsage {
+	if x != nil {
+		return x.Usages
+	}
+	return nil
+}
+
+// A relationship between an ML Metadata artifact and a task execution.
+type RunArtifactUsage struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	TaskId      string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	ExecutionId int64                  `protobuf:"varint,2,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	// Artifact input/output name taken from the ML Metadata event path.
+	Key string `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
+	// ML Metadata event type, for example INPUT, OUTPUT, INTERNAL_INPUT,
+	// INTERNAL_OUTPUT, DECLARED_INPUT, DECLARED_OUTPUT or PENDING_OUTPUT.
+	EventType     string                 `protobuf:"bytes,4,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
+	RecordedAt    *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=recorded_at,json=recordedAt,proto3" json:"recorded_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunArtifactUsage) Reset() {
+	*x = RunArtifactUsage{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunArtifactUsage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunArtifactUsage) ProtoMessage() {}
+
+func (x *RunArtifactUsage) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunArtifactUsage.ProtoReflect.Descriptor instead.
+func (*RunArtifactUsage) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *RunArtifactUsage) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *RunArtifactUsage) GetExecutionId() int64 {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return 0
+}
+
+func (x *RunArtifactUsage) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *RunArtifactUsage) GetEventType() string {
+	if x != nil {
+		return x.EventType
+	}
+	return ""
+}
+
+func (x *RunArtifactUsage) GetRecordedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.RecordedAt
+	}
+	return nil
+}
+
+type ListRunArtifactsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRunArtifactsRequest) Reset() {
+	*x = ListRunArtifactsRequest{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRunArtifactsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRunArtifactsRequest) ProtoMessage() {}
+
+func (x *ListRunArtifactsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRunArtifactsRequest.ProtoReflect.Descriptor instead.
+func (*ListRunArtifactsRequest) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ListRunArtifactsRequest) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+type ListRunArtifactsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	Artifacts     []*RunArtifact         `protobuf:"bytes,2,rep,name=artifacts,proto3" json:"artifacts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRunArtifactsResponse) Reset() {
+	*x = ListRunArtifactsResponse{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRunArtifactsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRunArtifactsResponse) ProtoMessage() {}
+
+func (x *ListRunArtifactsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRunArtifactsResponse.ProtoReflect.Descriptor instead.
+func (*ListRunArtifactsResponse) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ListRunArtifactsResponse) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ListRunArtifactsResponse) GetArtifacts() []*RunArtifact {
+	if x != nil {
+		return x.Artifacts
+	}
+	return nil
+}
+
+// ML Metadata execution corresponding to a pipeline task.
+type RunExecution struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	ExecutionId      int64                  `protobuf:"varint,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	TypeId           int64                  `protobuf:"varint,2,opt,name=type_id,json=typeId,proto3" json:"type_id,omitempty"`
+	TypeName         string                 `protobuf:"bytes,3,opt,name=type_name,json=typeName,proto3" json:"type_name,omitempty"`
+	Name             string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	ExternalId       string                 `protobuf:"bytes,5,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
+	State            string                 `protobuf:"bytes,6,opt,name=state,proto3" json:"state,omitempty"`
+	Properties       *structpb.Struct       `protobuf:"bytes,7,opt,name=properties,proto3" json:"properties,omitempty"`
+	CustomProperties *structpb.Struct       `protobuf:"bytes,8,opt,name=custom_properties,json=customProperties,proto3" json:"custom_properties,omitempty"`
+	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	LastUpdatedAt    *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=last_updated_at,json=lastUpdatedAt,proto3" json:"last_updated_at,omitempty"`
+	// Pipeline task and orchestration pod corresponding to this execution.
+	TaskId  string `protobuf:"bytes,11,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	PodName string `protobuf:"bytes,12,opt,name=pod_name,json=podName,proto3" json:"pod_name,omitempty"`
+	// Populated by GetRunExecution. ListRunExecutions returns execution
+	// summaries and leaves these fields empty to keep list responses compact.
+	InputArtifacts  []*RunArtifact `protobuf:"bytes,13,rep,name=input_artifacts,json=inputArtifacts,proto3" json:"input_artifacts,omitempty"`
+	OutputArtifacts []*RunArtifact `protobuf:"bytes,14,rep,name=output_artifacts,json=outputArtifacts,proto3" json:"output_artifacts,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *RunExecution) Reset() {
+	*x = RunExecution{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunExecution) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunExecution) ProtoMessage() {}
+
+func (x *RunExecution) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunExecution.ProtoReflect.Descriptor instead.
+func (*RunExecution) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *RunExecution) GetExecutionId() int64 {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return 0
+}
+
+func (x *RunExecution) GetTypeId() int64 {
+	if x != nil {
+		return x.TypeId
+	}
+	return 0
+}
+
+func (x *RunExecution) GetTypeName() string {
+	if x != nil {
+		return x.TypeName
+	}
+	return ""
+}
+
+func (x *RunExecution) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *RunExecution) GetExternalId() string {
+	if x != nil {
+		return x.ExternalId
+	}
+	return ""
+}
+
+func (x *RunExecution) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *RunExecution) GetProperties() *structpb.Struct {
+	if x != nil {
+		return x.Properties
+	}
+	return nil
+}
+
+func (x *RunExecution) GetCustomProperties() *structpb.Struct {
+	if x != nil {
+		return x.CustomProperties
+	}
+	return nil
+}
+
+func (x *RunExecution) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *RunExecution) GetLastUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastUpdatedAt
+	}
+	return nil
+}
+
+func (x *RunExecution) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *RunExecution) GetPodName() string {
+	if x != nil {
+		return x.PodName
+	}
+	return ""
+}
+
+func (x *RunExecution) GetInputArtifacts() []*RunArtifact {
+	if x != nil {
+		return x.InputArtifacts
+	}
+	return nil
+}
+
+func (x *RunExecution) GetOutputArtifacts() []*RunArtifact {
+	if x != nil {
+		return x.OutputArtifacts
+	}
+	return nil
+}
+
+type ListRunExecutionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRunExecutionsRequest) Reset() {
+	*x = ListRunExecutionsRequest{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRunExecutionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRunExecutionsRequest) ProtoMessage() {}
+
+func (x *ListRunExecutionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRunExecutionsRequest.ProtoReflect.Descriptor instead.
+func (*ListRunExecutionsRequest) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ListRunExecutionsRequest) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+type ListRunExecutionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	Executions    []*RunExecution        `protobuf:"bytes,2,rep,name=executions,proto3" json:"executions,omitempty"`
+	TotalSize     int32                  `protobuf:"varint,3,opt,name=total_size,json=totalSize,proto3" json:"total_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRunExecutionsResponse) Reset() {
+	*x = ListRunExecutionsResponse{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRunExecutionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRunExecutionsResponse) ProtoMessage() {}
+
+func (x *ListRunExecutionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRunExecutionsResponse.ProtoReflect.Descriptor instead.
+func (*ListRunExecutionsResponse) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ListRunExecutionsResponse) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ListRunExecutionsResponse) GetExecutions() []*RunExecution {
+	if x != nil {
+		return x.Executions
+	}
+	return nil
+}
+
+func (x *ListRunExecutionsResponse) GetTotalSize() int32 {
+	if x != nil {
+		return x.TotalSize
+	}
+	return 0
+}
+
+type GetRunExecutionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	ExecutionId   int64                  `protobuf:"varint,2,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRunExecutionRequest) Reset() {
+	*x = GetRunExecutionRequest{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRunExecutionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRunExecutionRequest) ProtoMessage() {}
+
+func (x *GetRunExecutionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRunExecutionRequest.ProtoReflect.Descriptor instead.
+func (*GetRunExecutionRequest) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GetRunExecutionRequest) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *GetRunExecutionRequest) GetExecutionId() int64 {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return 0
+}
+
+type GetRunTaskRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	TaskId        string                 `protobuf:"bytes,2,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRunTaskRequest) Reset() {
+	*x = GetRunTaskRequest{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRunTaskRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRunTaskRequest) ProtoMessage() {}
+
+func (x *GetRunTaskRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRunTaskRequest.ProtoReflect.Descriptor instead.
+func (*GetRunTaskRequest) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GetRunTaskRequest) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *GetRunTaskRequest) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+type ListRunTasksRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRunTasksRequest) Reset() {
+	*x = ListRunTasksRequest{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRunTasksRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRunTasksRequest) ProtoMessage() {}
+
+func (x *ListRunTasksRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRunTasksRequest.ProtoReflect.Descriptor instead.
+func (*ListRunTasksRequest) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *ListRunTasksRequest) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+type ListRunTasksResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	Tasks         []*PipelineTaskDetail  `protobuf:"bytes,2,rep,name=tasks,proto3" json:"tasks,omitempty"`
+	TotalSize     int32                  `protobuf:"varint,3,opt,name=total_size,json=totalSize,proto3" json:"total_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRunTasksResponse) Reset() {
+	*x = ListRunTasksResponse{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRunTasksResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRunTasksResponse) ProtoMessage() {}
+
+func (x *ListRunTasksResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRunTasksResponse.ProtoReflect.Descriptor instead.
+func (*ListRunTasksResponse) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ListRunTasksResponse) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ListRunTasksResponse) GetTasks() []*PipelineTaskDetail {
+	if x != nil {
+		return x.Tasks
+	}
+	return nil
+}
+
+func (x *ListRunTasksResponse) GetTotalSize() int32 {
+	if x != nil {
+		return x.TotalSize
+	}
+	return 0
+}
+
+// Detailed view of one task in a run.
+type RunTask struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Task            *PipelineTaskDetail    `protobuf:"bytes,1,opt,name=task,proto3" json:"task,omitempty"`
+	Execution       *RunExecution          `protobuf:"bytes,2,opt,name=execution,proto3" json:"execution,omitempty"`
+	InputArtifacts  []*RunArtifact         `protobuf:"bytes,3,rep,name=input_artifacts,json=inputArtifacts,proto3" json:"input_artifacts,omitempty"`
+	OutputArtifacts []*RunArtifact         `protobuf:"bytes,4,rep,name=output_artifacts,json=outputArtifacts,proto3" json:"output_artifacts,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *RunTask) Reset() {
+	*x = RunTask{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunTask) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunTask) ProtoMessage() {}
+
+func (x *RunTask) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunTask.ProtoReflect.Descriptor instead.
+func (*RunTask) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *RunTask) GetTask() *PipelineTaskDetail {
+	if x != nil {
+		return x.Task
+	}
+	return nil
+}
+
+func (x *RunTask) GetExecution() *RunExecution {
+	if x != nil {
+		return x.Execution
+	}
+	return nil
+}
+
+func (x *RunTask) GetInputArtifacts() []*RunArtifact {
+	if x != nil {
+		return x.InputArtifacts
+	}
+	return nil
+}
+
+func (x *RunTask) GetOutputArtifacts() []*RunArtifact {
+	if x != nil {
+		return x.OutputArtifacts
+	}
+	return nil
+}
+
+type GetRunLineageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRunLineageRequest) Reset() {
+	*x = GetRunLineageRequest{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRunLineageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRunLineageRequest) ProtoMessage() {}
+
+func (x *GetRunLineageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRunLineageRequest.ProtoReflect.Descriptor instead.
+func (*GetRunLineageRequest) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GetRunLineageRequest) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+// A task or artifact node in a run lineage graph.
+type RunLineageNode struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Stable graph-local ID: task:<task_id> or artifact:<artifact_id>.
+	NodeId string `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	// Types that are valid to be assigned to Node:
+	//
+	//	*RunLineageNode_Task
+	//	*RunLineageNode_Artifact
+	Node          isRunLineageNode_Node `protobuf_oneof:"node"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunLineageNode) Reset() {
+	*x = RunLineageNode{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunLineageNode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunLineageNode) ProtoMessage() {}
+
+func (x *RunLineageNode) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunLineageNode.ProtoReflect.Descriptor instead.
+func (*RunLineageNode) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *RunLineageNode) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
+}
+
+func (x *RunLineageNode) GetNode() isRunLineageNode_Node {
+	if x != nil {
+		return x.Node
+	}
+	return nil
+}
+
+func (x *RunLineageNode) GetTask() *PipelineTaskDetail {
+	if x != nil {
+		if x, ok := x.Node.(*RunLineageNode_Task); ok {
+			return x.Task
+		}
+	}
+	return nil
+}
+
+func (x *RunLineageNode) GetArtifact() *RunArtifact {
+	if x != nil {
+		if x, ok := x.Node.(*RunLineageNode_Artifact); ok {
+			return x.Artifact
+		}
+	}
+	return nil
+}
+
+type isRunLineageNode_Node interface {
+	isRunLineageNode_Node()
+}
+
+type RunLineageNode_Task struct {
+	Task *PipelineTaskDetail `protobuf:"bytes,2,opt,name=task,proto3,oneof"`
+}
+
+type RunLineageNode_Artifact struct {
+	Artifact *RunArtifact `protobuf:"bytes,3,opt,name=artifact,proto3,oneof"`
+}
+
+func (*RunLineageNode_Task) isRunLineageNode_Node() {}
+
+func (*RunLineageNode_Artifact) isRunLineageNode_Node() {}
+
+// A directed ML Metadata event edge in a run lineage graph.
+type RunLineageEdge struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SourceNodeId  string                 `protobuf:"bytes,1,opt,name=source_node_id,json=sourceNodeId,proto3" json:"source_node_id,omitempty"`
+	TargetNodeId  string                 `protobuf:"bytes,2,opt,name=target_node_id,json=targetNodeId,proto3" json:"target_node_id,omitempty"`
+	TaskId        string                 `protobuf:"bytes,3,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	ExecutionId   int64                  `protobuf:"varint,4,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	ArtifactId    int64                  `protobuf:"varint,5,opt,name=artifact_id,json=artifactId,proto3" json:"artifact_id,omitempty"`
+	Key           string                 `protobuf:"bytes,6,opt,name=key,proto3" json:"key,omitempty"`
+	EventType     string                 `protobuf:"bytes,7,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
+	RecordedAt    *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=recorded_at,json=recordedAt,proto3" json:"recorded_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunLineageEdge) Reset() {
+	*x = RunLineageEdge{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunLineageEdge) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunLineageEdge) ProtoMessage() {}
+
+func (x *RunLineageEdge) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunLineageEdge.ProtoReflect.Descriptor instead.
+func (*RunLineageEdge) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *RunLineageEdge) GetSourceNodeId() string {
+	if x != nil {
+		return x.SourceNodeId
+	}
+	return ""
+}
+
+func (x *RunLineageEdge) GetTargetNodeId() string {
+	if x != nil {
+		return x.TargetNodeId
+	}
+	return ""
+}
+
+func (x *RunLineageEdge) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *RunLineageEdge) GetExecutionId() int64 {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return 0
+}
+
+func (x *RunLineageEdge) GetArtifactId() int64 {
+	if x != nil {
+		return x.ArtifactId
+	}
+	return 0
+}
+
+func (x *RunLineageEdge) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *RunLineageEdge) GetEventType() string {
+	if x != nil {
+		return x.EventType
+	}
+	return ""
+}
+
+func (x *RunLineageEdge) GetRecordedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.RecordedAt
+	}
+	return nil
+}
+
+type RunLineage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	Nodes         []*RunLineageNode      `protobuf:"bytes,2,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	Edges         []*RunLineageEdge      `protobuf:"bytes,3,rep,name=edges,proto3" json:"edges,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunLineage) Reset() {
+	*x = RunLineage{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunLineage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunLineage) ProtoMessage() {}
+
+func (x *RunLineage) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunLineage.ProtoReflect.Descriptor instead.
+func (*RunLineage) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *RunLineage) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *RunLineage) GetNodes() []*RunLineageNode {
+	if x != nil {
+		return x.Nodes
+	}
+	return nil
+}
+
+func (x *RunLineage) GetEdges() []*RunLineageEdge {
+	if x != nil {
+		return x.Edges
+	}
+	return nil
+}
+
 type CreateRunRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the parent experiment.
@@ -935,7 +2080,7 @@ type CreateRunRequest struct {
 
 func (x *CreateRunRequest) Reset() {
 	*x = CreateRunRequest{}
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[7]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -947,7 +2092,7 @@ func (x *CreateRunRequest) String() string {
 func (*CreateRunRequest) ProtoMessage() {}
 
 func (x *CreateRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[7]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -960,7 +2105,7 @@ func (x *CreateRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRunRequest.ProtoReflect.Descriptor instead.
 func (*CreateRunRequest) Descriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{7}
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{23}
 }
 
 // Deprecated: Marked as deprecated in backend/api/v2beta1/run.proto.
@@ -992,7 +2137,7 @@ type GetRunRequest struct {
 
 func (x *GetRunRequest) Reset() {
 	*x = GetRunRequest{}
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[8]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1004,7 +2149,7 @@ func (x *GetRunRequest) String() string {
 func (*GetRunRequest) ProtoMessage() {}
 
 func (x *GetRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[8]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1017,7 +2162,7 @@ func (x *GetRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRunRequest.ProtoReflect.Descriptor instead.
 func (*GetRunRequest) Descriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{8}
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{24}
 }
 
 // Deprecated: Marked as deprecated in backend/api/v2beta1/run.proto.
@@ -1061,7 +2206,7 @@ type ListRunsRequest struct {
 
 func (x *ListRunsRequest) Reset() {
 	*x = ListRunsRequest{}
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[9]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1073,7 +2218,7 @@ func (x *ListRunsRequest) String() string {
 func (*ListRunsRequest) ProtoMessage() {}
 
 func (x *ListRunsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[9]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1086,7 +2231,7 @@ func (x *ListRunsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRunsRequest.ProtoReflect.Descriptor instead.
 func (*ListRunsRequest) Descriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{9}
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ListRunsRequest) GetNamespace() string {
@@ -1131,6 +2276,87 @@ func (x *ListRunsRequest) GetFilter() string {
 	return ""
 }
 
+type ListRunsByRecurringRunRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The ID of the recurring run (job) that created the runs.
+	RecurringRunId string `protobuf:"bytes,1,opt,name=recurring_run_id,json=recurringRunId,proto3" json:"recurring_run_id,omitempty"`
+	// A page token returned by the previous request.
+	PageToken string `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	// The number of runs to return per page.
+	PageSize int32 `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	// Can be format of "field_name", "field_name asc" or "field_name desc".
+	SortBy string `protobuf:"bytes,4,opt,name=sort_by,json=sortBy,proto3" json:"sort_by,omitempty"`
+	// A url-encoded, JSON-serialized Filter protocol buffer.
+	Filter        string `protobuf:"bytes,5,opt,name=filter,proto3" json:"filter,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRunsByRecurringRunRequest) Reset() {
+	*x = ListRunsByRecurringRunRequest{}
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRunsByRecurringRunRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRunsByRecurringRunRequest) ProtoMessage() {}
+
+func (x *ListRunsByRecurringRunRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRunsByRecurringRunRequest.ProtoReflect.Descriptor instead.
+func (*ListRunsByRecurringRunRequest) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ListRunsByRecurringRunRequest) GetRecurringRunId() string {
+	if x != nil {
+		return x.RecurringRunId
+	}
+	return ""
+}
+
+func (x *ListRunsByRecurringRunRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+func (x *ListRunsByRecurringRunRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListRunsByRecurringRunRequest) GetSortBy() string {
+	if x != nil {
+		return x.SortBy
+	}
+	return ""
+}
+
+func (x *ListRunsByRecurringRunRequest) GetFilter() string {
+	if x != nil {
+		return x.Filter
+	}
+	return ""
+}
+
 type TerminateRunRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The ID of the parent experiment.
@@ -1145,7 +2371,7 @@ type TerminateRunRequest struct {
 
 func (x *TerminateRunRequest) Reset() {
 	*x = TerminateRunRequest{}
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[10]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1157,7 +2383,7 @@ func (x *TerminateRunRequest) String() string {
 func (*TerminateRunRequest) ProtoMessage() {}
 
 func (x *TerminateRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[10]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1170,7 +2396,7 @@ func (x *TerminateRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TerminateRunRequest.ProtoReflect.Descriptor instead.
 func (*TerminateRunRequest) Descriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{10}
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{27}
 }
 
 // Deprecated: Marked as deprecated in backend/api/v2beta1/run.proto.
@@ -1202,7 +2428,7 @@ type ListRunsResponse struct {
 
 func (x *ListRunsResponse) Reset() {
 	*x = ListRunsResponse{}
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[11]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1214,7 +2440,7 @@ func (x *ListRunsResponse) String() string {
 func (*ListRunsResponse) ProtoMessage() {}
 
 func (x *ListRunsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[11]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1227,7 +2453,7 @@ func (x *ListRunsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRunsResponse.ProtoReflect.Descriptor instead.
 func (*ListRunsResponse) Descriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{11}
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ListRunsResponse) GetRuns() []*Run {
@@ -1265,7 +2491,7 @@ type ArchiveRunRequest struct {
 
 func (x *ArchiveRunRequest) Reset() {
 	*x = ArchiveRunRequest{}
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[12]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1277,7 +2503,7 @@ func (x *ArchiveRunRequest) String() string {
 func (*ArchiveRunRequest) ProtoMessage() {}
 
 func (x *ArchiveRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[12]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1290,7 +2516,7 @@ func (x *ArchiveRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArchiveRunRequest.ProtoReflect.Descriptor instead.
 func (*ArchiveRunRequest) Descriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{12}
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{29}
 }
 
 // Deprecated: Marked as deprecated in backend/api/v2beta1/run.proto.
@@ -1322,7 +2548,7 @@ type UnarchiveRunRequest struct {
 
 func (x *UnarchiveRunRequest) Reset() {
 	*x = UnarchiveRunRequest{}
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[13]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1334,7 +2560,7 @@ func (x *UnarchiveRunRequest) String() string {
 func (*UnarchiveRunRequest) ProtoMessage() {}
 
 func (x *UnarchiveRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[13]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1347,7 +2573,7 @@ func (x *UnarchiveRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnarchiveRunRequest.ProtoReflect.Descriptor instead.
 func (*UnarchiveRunRequest) Descriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{13}
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{30}
 }
 
 // Deprecated: Marked as deprecated in backend/api/v2beta1/run.proto.
@@ -1379,7 +2605,7 @@ type DeleteRunRequest struct {
 
 func (x *DeleteRunRequest) Reset() {
 	*x = DeleteRunRequest{}
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[14]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1391,7 +2617,7 @@ func (x *DeleteRunRequest) String() string {
 func (*DeleteRunRequest) ProtoMessage() {}
 
 func (x *DeleteRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[14]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1404,7 +2630,7 @@ func (x *DeleteRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRunRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRunRequest) Descriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{14}
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{31}
 }
 
 // Deprecated: Marked as deprecated in backend/api/v2beta1/run.proto.
@@ -1436,7 +2662,7 @@ type RetryRunRequest struct {
 
 func (x *RetryRunRequest) Reset() {
 	*x = RetryRunRequest{}
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[15]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1448,7 +2674,7 @@ func (x *RetryRunRequest) String() string {
 func (*RetryRunRequest) ProtoMessage() {}
 
 func (x *RetryRunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[15]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1461,7 +2687,7 @@ func (x *RetryRunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RetryRunRequest.ProtoReflect.Descriptor instead.
 func (*RetryRunRequest) Descriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{15}
+	return file_backend_api_v2beta1_run_proto_rawDescGZIP(), []int{32}
 }
 
 // Deprecated: Marked as deprecated in backend/api/v2beta1/run.proto.
@@ -1494,7 +2720,7 @@ type PipelineTaskDetail_ChildTask struct {
 
 func (x *PipelineTaskDetail_ChildTask) Reset() {
 	*x = PipelineTaskDetail_ChildTask{}
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[18]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1506,7 +2732,7 @@ func (x *PipelineTaskDetail_ChildTask) String() string {
 func (*PipelineTaskDetail_ChildTask) ProtoMessage() {}
 
 func (x *PipelineTaskDetail_ChildTask) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_run_proto_msgTypes[18]
+	mi := &file_backend_api_v2beta1_run_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1652,7 +2878,110 @@ const file_backend_api_v2beta1_run_proto_rawDesc = "" +
 	"\x10failed_main_jobs\x18\x03 \x03(\tR\x0efailedMainJobs\x12@\n" +
 	"\x1dfailed_pre_caching_check_jobs\x18\x04 \x03(\tR\x19failedPreCachingCheckJobs\"1\n" +
 	"\fArtifactList\x12!\n" +
-	"\fartifact_ids\x18\x01 \x03(\x03R\vartifactIds\"z\n" +
+	"\fartifact_ids\x18\x01 \x03(\x03R\vartifactIds\"\x91\x04\n" +
+	"\vRunArtifact\x12\x1f\n" +
+	"\vartifact_id\x18\x01 \x01(\x03R\n" +
+	"artifactId\x12\x17\n" +
+	"\atype_id\x18\x02 \x01(\x03R\x06typeId\x12\x1b\n" +
+	"\ttype_name\x18\x03 \x01(\tR\btypeName\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x12\x10\n" +
+	"\x03uri\x18\x05 \x01(\tR\x03uri\x12\x1f\n" +
+	"\vexternal_id\x18\x06 \x01(\tR\n" +
+	"externalId\x12\x14\n" +
+	"\x05state\x18\a \x01(\tR\x05state\x127\n" +
+	"\n" +
+	"properties\x18\b \x01(\v2\x17.google.protobuf.StructR\n" +
+	"properties\x12D\n" +
+	"\x11custom_properties\x18\t \x01(\v2\x17.google.protobuf.StructR\x10customProperties\x129\n" +
+	"\n" +
+	"created_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12B\n" +
+	"\x0flast_updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\rlastUpdatedAt\x12P\n" +
+	"\x06usages\x18\f \x03(\v28.kubeflow.pipelines.backend.api.v2beta1.RunArtifactUsageR\x06usages\"\xbc\x01\n" +
+	"\x10RunArtifactUsage\x12\x17\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12!\n" +
+	"\fexecution_id\x18\x02 \x01(\x03R\vexecutionId\x12\x10\n" +
+	"\x03key\x18\x03 \x01(\tR\x03key\x12\x1d\n" +
+	"\n" +
+	"event_type\x18\x04 \x01(\tR\teventType\x12;\n" +
+	"\vrecorded_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"recordedAt\"0\n" +
+	"\x17ListRunArtifactsRequest\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\"\x84\x01\n" +
+	"\x18ListRunArtifactsResponse\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12Q\n" +
+	"\tartifacts\x18\x02 \x03(\v23.kubeflow.pipelines.backend.api.v2beta1.RunArtifactR\tartifacts\"\xa2\x05\n" +
+	"\fRunExecution\x12!\n" +
+	"\fexecution_id\x18\x01 \x01(\x03R\vexecutionId\x12\x17\n" +
+	"\atype_id\x18\x02 \x01(\x03R\x06typeId\x12\x1b\n" +
+	"\ttype_name\x18\x03 \x01(\tR\btypeName\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x12\x1f\n" +
+	"\vexternal_id\x18\x05 \x01(\tR\n" +
+	"externalId\x12\x14\n" +
+	"\x05state\x18\x06 \x01(\tR\x05state\x127\n" +
+	"\n" +
+	"properties\x18\a \x01(\v2\x17.google.protobuf.StructR\n" +
+	"properties\x12D\n" +
+	"\x11custom_properties\x18\b \x01(\v2\x17.google.protobuf.StructR\x10customProperties\x129\n" +
+	"\n" +
+	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12B\n" +
+	"\x0flast_updated_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\rlastUpdatedAt\x12\x17\n" +
+	"\atask_id\x18\v \x01(\tR\x06taskId\x12\x19\n" +
+	"\bpod_name\x18\f \x01(\tR\apodName\x12\\\n" +
+	"\x0finput_artifacts\x18\r \x03(\v23.kubeflow.pipelines.backend.api.v2beta1.RunArtifactR\x0einputArtifacts\x12^\n" +
+	"\x10output_artifacts\x18\x0e \x03(\v23.kubeflow.pipelines.backend.api.v2beta1.RunArtifactR\x0foutputArtifacts\"1\n" +
+	"\x18ListRunExecutionsRequest\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\"\xa7\x01\n" +
+	"\x19ListRunExecutionsResponse\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12T\n" +
+	"\n" +
+	"executions\x18\x02 \x03(\v24.kubeflow.pipelines.backend.api.v2beta1.RunExecutionR\n" +
+	"executions\x12\x1d\n" +
+	"\n" +
+	"total_size\x18\x03 \x01(\x05R\ttotalSize\"R\n" +
+	"\x16GetRunExecutionRequest\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12!\n" +
+	"\fexecution_id\x18\x02 \x01(\x03R\vexecutionId\"C\n" +
+	"\x11GetRunTaskRequest\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x17\n" +
+	"\atask_id\x18\x02 \x01(\tR\x06taskId\",\n" +
+	"\x13ListRunTasksRequest\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\"\x9e\x01\n" +
+	"\x14ListRunTasksResponse\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12P\n" +
+	"\x05tasks\x18\x02 \x03(\v2:.kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetailR\x05tasks\x12\x1d\n" +
+	"\n" +
+	"total_size\x18\x03 \x01(\x05R\ttotalSize\"\xeb\x02\n" +
+	"\aRunTask\x12N\n" +
+	"\x04task\x18\x01 \x01(\v2:.kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetailR\x04task\x12R\n" +
+	"\texecution\x18\x02 \x01(\v24.kubeflow.pipelines.backend.api.v2beta1.RunExecutionR\texecution\x12\\\n" +
+	"\x0finput_artifacts\x18\x03 \x03(\v23.kubeflow.pipelines.backend.api.v2beta1.RunArtifactR\x0einputArtifacts\x12^\n" +
+	"\x10output_artifacts\x18\x04 \x03(\v23.kubeflow.pipelines.backend.api.v2beta1.RunArtifactR\x0foutputArtifacts\"-\n" +
+	"\x14GetRunLineageRequest\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\"\xd6\x01\n" +
+	"\x0eRunLineageNode\x12\x17\n" +
+	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12P\n" +
+	"\x04task\x18\x02 \x01(\v2:.kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetailH\x00R\x04task\x12Q\n" +
+	"\bartifact\x18\x03 \x01(\v23.kubeflow.pipelines.backend.api.v2beta1.RunArtifactH\x00R\bartifactB\x06\n" +
+	"\x04node\"\xa7\x02\n" +
+	"\x0eRunLineageEdge\x12$\n" +
+	"\x0esource_node_id\x18\x01 \x01(\tR\fsourceNodeId\x12$\n" +
+	"\x0etarget_node_id\x18\x02 \x01(\tR\ftargetNodeId\x12\x17\n" +
+	"\atask_id\x18\x03 \x01(\tR\x06taskId\x12!\n" +
+	"\fexecution_id\x18\x04 \x01(\x03R\vexecutionId\x12\x1f\n" +
+	"\vartifact_id\x18\x05 \x01(\x03R\n" +
+	"artifactId\x12\x10\n" +
+	"\x03key\x18\x06 \x01(\tR\x03key\x12\x1d\n" +
+	"\n" +
+	"event_type\x18\a \x01(\tR\teventType\x12;\n" +
+	"\vrecorded_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"recordedAt\"\xbf\x01\n" +
+	"\n" +
+	"RunLineage\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12L\n" +
+	"\x05nodes\x18\x02 \x03(\v26.kubeflow.pipelines.backend.api.v2beta1.RunLineageNodeR\x05nodes\x12L\n" +
+	"\x05edges\x18\x03 \x03(\v26.kubeflow.pipelines.backend.api.v2beta1.RunLineageEdgeR\x05edges\"z\n" +
 	"\x10CreateRunRequest\x12'\n" +
 	"\rexperiment_id\x18\x01 \x01(\tB\x02\x18\x01R\fexperimentId\x12=\n" +
 	"\x03run\x18\x02 \x01(\v2+.kubeflow.pipelines.backend.api.v2beta1.RunR\x03run\"O\n" +
@@ -1666,7 +2995,14 @@ const file_backend_api_v2beta1_run_proto_rawDesc = "" +
 	"page_token\x18\x03 \x01(\tR\tpageToken\x12\x1b\n" +
 	"\tpage_size\x18\x04 \x01(\x05R\bpageSize\x12\x17\n" +
 	"\asort_by\x18\x05 \x01(\tR\x06sortBy\x12\x16\n" +
-	"\x06filter\x18\x06 \x01(\tR\x06filter\"U\n" +
+	"\x06filter\x18\x06 \x01(\tR\x06filter\"\xb6\x01\n" +
+	"\x1dListRunsByRecurringRunRequest\x12(\n" +
+	"\x10recurring_run_id\x18\x01 \x01(\tR\x0erecurringRunId\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\x12\x1b\n" +
+	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\x12\x17\n" +
+	"\asort_by\x18\x04 \x01(\tR\x06sortBy\x12\x16\n" +
+	"\x06filter\x18\x05 \x01(\tR\x06filter\"U\n" +
 	"\x13TerminateRunRequest\x12'\n" +
 	"\rexperiment_id\x18\x01 \x01(\tB\x02\x18\x01R\fexperimentId\x12\x15\n" +
 	"\x06run_id\x18\x02 \x01(\tR\x05runId\"\x9a\x01\n" +
@@ -1698,12 +3034,20 @@ const file_backend_api_v2beta1_run_proto_rawDesc = "" +
 	"\tCANCELING\x10\x06\x12\f\n" +
 	"\bCANCELED\x10\a\x12\n" +
 	"\n" +
-	"\x06PAUSED\x10\b2\x99\t\n" +
+	"\x06PAUSED\x10\b2\xe5\x13\n" +
 	"\n" +
 	"RunService\x12\x93\x01\n" +
 	"\tCreateRun\x128.kubeflow.pipelines.backend.api.v2beta1.CreateRunRequest\x1a+.kubeflow.pipelines.backend.api.v2beta1.Run\"\x1f\x82\xd3\xe4\x93\x02\x19:\x03run\"\x12/apis/v2beta1/runs\x12\x91\x01\n" +
-	"\x06GetRun\x125.kubeflow.pipelines.backend.api.v2beta1.GetRunRequest\x1a+.kubeflow.pipelines.backend.api.v2beta1.Run\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/apis/v2beta1/runs/{run_id}\x12\x99\x01\n" +
-	"\bListRuns\x127.kubeflow.pipelines.backend.api.v2beta1.ListRunsRequest\x1a8.kubeflow.pipelines.backend.api.v2beta1.ListRunsResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/apis/v2beta1/runs\x12\x8c\x01\n" +
+	"\x06GetRun\x125.kubeflow.pipelines.backend.api.v2beta1.GetRunRequest\x1a+.kubeflow.pipelines.backend.api.v2beta1.Run\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/apis/v2beta1/runs/{run_id}\x12\xc8\x01\n" +
+	"\x11ListRunExecutions\x12@.kubeflow.pipelines.backend.api.v2beta1.ListRunExecutionsRequest\x1aA.kubeflow.pipelines.backend.api.v2beta1.ListRunExecutionsResponse\".\x82\xd3\xe4\x93\x02(\x12&/apis/v2beta1/runs/{run_id}/executions\x12\xc6\x01\n" +
+	"\x0fGetRunExecution\x12>.kubeflow.pipelines.backend.api.v2beta1.GetRunExecutionRequest\x1a4.kubeflow.pipelines.backend.api.v2beta1.RunExecution\"=\x82\xd3\xe4\x93\x027\x125/apis/v2beta1/runs/{run_id}/executions/{execution_id}\x12\xc4\x01\n" +
+	"\x10ListRunArtifacts\x12?.kubeflow.pipelines.backend.api.v2beta1.ListRunArtifactsRequest\x1a@.kubeflow.pipelines.backend.api.v2beta1.ListRunArtifactsResponse\"-\x82\xd3\xe4\x93\x02'\x12%/apis/v2beta1/runs/{run_id}/artifacts\x12\xae\x01\n" +
+	"\rGetRunLineage\x12<.kubeflow.pipelines.backend.api.v2beta1.GetRunLineageRequest\x1a2.kubeflow.pipelines.backend.api.v2beta1.RunLineage\"+\x82\xd3\xe4\x93\x02%\x12#/apis/v2beta1/runs/{run_id}/lineage\x12\xb4\x01\n" +
+	"\fListRunTasks\x12;.kubeflow.pipelines.backend.api.v2beta1.ListRunTasksRequest\x1a<.kubeflow.pipelines.backend.api.v2beta1.ListRunTasksResponse\")\x82\xd3\xe4\x93\x02#\x12!/apis/v2beta1/runs/{run_id}/tasks\x12\xad\x01\n" +
+	"\n" +
+	"GetRunTask\x129.kubeflow.pipelines.backend.api.v2beta1.GetRunTaskRequest\x1a/.kubeflow.pipelines.backend.api.v2beta1.RunTask\"3\x82\xd3\xe4\x93\x02-\x12+/apis/v2beta1/runs/{run_id}/tasks/{task_id}\x12\x99\x01\n" +
+	"\bListRuns\x127.kubeflow.pipelines.backend.api.v2beta1.ListRunsRequest\x1a8.kubeflow.pipelines.backend.api.v2beta1.ListRunsResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/apis/v2beta1/runs\x12\xd6\x01\n" +
+	"\x16ListRunsByRecurringRun\x12E.kubeflow.pipelines.backend.api.v2beta1.ListRunsByRecurringRunRequest\x1a8.kubeflow.pipelines.backend.api.v2beta1.ListRunsResponse\";\x82\xd3\xe4\x93\x025\x123/apis/v2beta1/recurringruns/{recurring_run_id}/runs\x12\x8c\x01\n" +
 	"\n" +
 	"ArchiveRun\x129.kubeflow.pipelines.backend.api.v2beta1.ArchiveRunRequest\x1a\x16.google.protobuf.Empty\"+\x82\xd3\xe4\x93\x02%\"#/apis/v2beta1/runs/{run_id}:archive\x12\x92\x01\n" +
 	"\fUnarchiveRun\x12;.kubeflow.pipelines.backend.api.v2beta1.UnarchiveRunRequest\x1a\x16.google.protobuf.Empty\"-\x82\xd3\xe4\x93\x02'\"%/apis/v2beta1/runs/{run_id}:unarchive\x12\x82\x01\n" +
@@ -1731,86 +3075,141 @@ func file_backend_api_v2beta1_run_proto_rawDescGZIP() []byte {
 }
 
 var file_backend_api_v2beta1_run_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_backend_api_v2beta1_run_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_backend_api_v2beta1_run_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_backend_api_v2beta1_run_proto_goTypes = []any{
-	(RuntimeState)(0),                    // 0: kubeflow.pipelines.backend.api.v2beta1.RuntimeState
-	(Run_StorageState)(0),                // 1: kubeflow.pipelines.backend.api.v2beta1.Run.StorageState
-	(*Run)(nil),                          // 2: kubeflow.pipelines.backend.api.v2beta1.Run
-	(*PipelineVersionReference)(nil),     // 3: kubeflow.pipelines.backend.api.v2beta1.PipelineVersionReference
-	(*RuntimeStatus)(nil),                // 4: kubeflow.pipelines.backend.api.v2beta1.RuntimeStatus
-	(*RunDetails)(nil),                   // 5: kubeflow.pipelines.backend.api.v2beta1.RunDetails
-	(*PipelineTaskDetail)(nil),           // 6: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail
-	(*PipelineTaskExecutorDetail)(nil),   // 7: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskExecutorDetail
-	(*ArtifactList)(nil),                 // 8: kubeflow.pipelines.backend.api.v2beta1.ArtifactList
-	(*CreateRunRequest)(nil),             // 9: kubeflow.pipelines.backend.api.v2beta1.CreateRunRequest
-	(*GetRunRequest)(nil),                // 10: kubeflow.pipelines.backend.api.v2beta1.GetRunRequest
-	(*ListRunsRequest)(nil),              // 11: kubeflow.pipelines.backend.api.v2beta1.ListRunsRequest
-	(*TerminateRunRequest)(nil),          // 12: kubeflow.pipelines.backend.api.v2beta1.TerminateRunRequest
-	(*ListRunsResponse)(nil),             // 13: kubeflow.pipelines.backend.api.v2beta1.ListRunsResponse
-	(*ArchiveRunRequest)(nil),            // 14: kubeflow.pipelines.backend.api.v2beta1.ArchiveRunRequest
-	(*UnarchiveRunRequest)(nil),          // 15: kubeflow.pipelines.backend.api.v2beta1.UnarchiveRunRequest
-	(*DeleteRunRequest)(nil),             // 16: kubeflow.pipelines.backend.api.v2beta1.DeleteRunRequest
-	(*RetryRunRequest)(nil),              // 17: kubeflow.pipelines.backend.api.v2beta1.RetryRunRequest
-	nil,                                  // 18: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.InputsEntry
-	nil,                                  // 19: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.OutputsEntry
-	(*PipelineTaskDetail_ChildTask)(nil), // 20: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.ChildTask
-	(*structpb.Struct)(nil),              // 21: google.protobuf.Struct
-	(*RuntimeConfig)(nil),                // 22: kubeflow.pipelines.backend.api.v2beta1.RuntimeConfig
-	(*timestamppb.Timestamp)(nil),        // 23: google.protobuf.Timestamp
-	(*status.Status)(nil),                // 24: google.rpc.Status
-	(*emptypb.Empty)(nil),                // 25: google.protobuf.Empty
+	(RuntimeState)(0),                     // 0: kubeflow.pipelines.backend.api.v2beta1.RuntimeState
+	(Run_StorageState)(0),                 // 1: kubeflow.pipelines.backend.api.v2beta1.Run.StorageState
+	(*Run)(nil),                           // 2: kubeflow.pipelines.backend.api.v2beta1.Run
+	(*PipelineVersionReference)(nil),      // 3: kubeflow.pipelines.backend.api.v2beta1.PipelineVersionReference
+	(*RuntimeStatus)(nil),                 // 4: kubeflow.pipelines.backend.api.v2beta1.RuntimeStatus
+	(*RunDetails)(nil),                    // 5: kubeflow.pipelines.backend.api.v2beta1.RunDetails
+	(*PipelineTaskDetail)(nil),            // 6: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail
+	(*PipelineTaskExecutorDetail)(nil),    // 7: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskExecutorDetail
+	(*ArtifactList)(nil),                  // 8: kubeflow.pipelines.backend.api.v2beta1.ArtifactList
+	(*RunArtifact)(nil),                   // 9: kubeflow.pipelines.backend.api.v2beta1.RunArtifact
+	(*RunArtifactUsage)(nil),              // 10: kubeflow.pipelines.backend.api.v2beta1.RunArtifactUsage
+	(*ListRunArtifactsRequest)(nil),       // 11: kubeflow.pipelines.backend.api.v2beta1.ListRunArtifactsRequest
+	(*ListRunArtifactsResponse)(nil),      // 12: kubeflow.pipelines.backend.api.v2beta1.ListRunArtifactsResponse
+	(*RunExecution)(nil),                  // 13: kubeflow.pipelines.backend.api.v2beta1.RunExecution
+	(*ListRunExecutionsRequest)(nil),      // 14: kubeflow.pipelines.backend.api.v2beta1.ListRunExecutionsRequest
+	(*ListRunExecutionsResponse)(nil),     // 15: kubeflow.pipelines.backend.api.v2beta1.ListRunExecutionsResponse
+	(*GetRunExecutionRequest)(nil),        // 16: kubeflow.pipelines.backend.api.v2beta1.GetRunExecutionRequest
+	(*GetRunTaskRequest)(nil),             // 17: kubeflow.pipelines.backend.api.v2beta1.GetRunTaskRequest
+	(*ListRunTasksRequest)(nil),           // 18: kubeflow.pipelines.backend.api.v2beta1.ListRunTasksRequest
+	(*ListRunTasksResponse)(nil),          // 19: kubeflow.pipelines.backend.api.v2beta1.ListRunTasksResponse
+	(*RunTask)(nil),                       // 20: kubeflow.pipelines.backend.api.v2beta1.RunTask
+	(*GetRunLineageRequest)(nil),          // 21: kubeflow.pipelines.backend.api.v2beta1.GetRunLineageRequest
+	(*RunLineageNode)(nil),                // 22: kubeflow.pipelines.backend.api.v2beta1.RunLineageNode
+	(*RunLineageEdge)(nil),                // 23: kubeflow.pipelines.backend.api.v2beta1.RunLineageEdge
+	(*RunLineage)(nil),                    // 24: kubeflow.pipelines.backend.api.v2beta1.RunLineage
+	(*CreateRunRequest)(nil),              // 25: kubeflow.pipelines.backend.api.v2beta1.CreateRunRequest
+	(*GetRunRequest)(nil),                 // 26: kubeflow.pipelines.backend.api.v2beta1.GetRunRequest
+	(*ListRunsRequest)(nil),               // 27: kubeflow.pipelines.backend.api.v2beta1.ListRunsRequest
+	(*ListRunsByRecurringRunRequest)(nil), // 28: kubeflow.pipelines.backend.api.v2beta1.ListRunsByRecurringRunRequest
+	(*TerminateRunRequest)(nil),           // 29: kubeflow.pipelines.backend.api.v2beta1.TerminateRunRequest
+	(*ListRunsResponse)(nil),              // 30: kubeflow.pipelines.backend.api.v2beta1.ListRunsResponse
+	(*ArchiveRunRequest)(nil),             // 31: kubeflow.pipelines.backend.api.v2beta1.ArchiveRunRequest
+	(*UnarchiveRunRequest)(nil),           // 32: kubeflow.pipelines.backend.api.v2beta1.UnarchiveRunRequest
+	(*DeleteRunRequest)(nil),              // 33: kubeflow.pipelines.backend.api.v2beta1.DeleteRunRequest
+	(*RetryRunRequest)(nil),               // 34: kubeflow.pipelines.backend.api.v2beta1.RetryRunRequest
+	nil,                                   // 35: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.InputsEntry
+	nil,                                   // 36: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.OutputsEntry
+	(*PipelineTaskDetail_ChildTask)(nil),  // 37: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.ChildTask
+	(*structpb.Struct)(nil),               // 38: google.protobuf.Struct
+	(*RuntimeConfig)(nil),                 // 39: kubeflow.pipelines.backend.api.v2beta1.RuntimeConfig
+	(*timestamppb.Timestamp)(nil),         // 40: google.protobuf.Timestamp
+	(*status.Status)(nil),                 // 41: google.rpc.Status
+	(*emptypb.Empty)(nil),                 // 42: google.protobuf.Empty
 }
 var file_backend_api_v2beta1_run_proto_depIdxs = []int32{
 	1,  // 0: kubeflow.pipelines.backend.api.v2beta1.Run.storage_state:type_name -> kubeflow.pipelines.backend.api.v2beta1.Run.StorageState
-	21, // 1: kubeflow.pipelines.backend.api.v2beta1.Run.pipeline_spec:type_name -> google.protobuf.Struct
+	38, // 1: kubeflow.pipelines.backend.api.v2beta1.Run.pipeline_spec:type_name -> google.protobuf.Struct
 	3,  // 2: kubeflow.pipelines.backend.api.v2beta1.Run.pipeline_version_reference:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineVersionReference
-	22, // 3: kubeflow.pipelines.backend.api.v2beta1.Run.runtime_config:type_name -> kubeflow.pipelines.backend.api.v2beta1.RuntimeConfig
-	23, // 4: kubeflow.pipelines.backend.api.v2beta1.Run.created_at:type_name -> google.protobuf.Timestamp
-	23, // 5: kubeflow.pipelines.backend.api.v2beta1.Run.scheduled_at:type_name -> google.protobuf.Timestamp
-	23, // 6: kubeflow.pipelines.backend.api.v2beta1.Run.finished_at:type_name -> google.protobuf.Timestamp
+	39, // 3: kubeflow.pipelines.backend.api.v2beta1.Run.runtime_config:type_name -> kubeflow.pipelines.backend.api.v2beta1.RuntimeConfig
+	40, // 4: kubeflow.pipelines.backend.api.v2beta1.Run.created_at:type_name -> google.protobuf.Timestamp
+	40, // 5: kubeflow.pipelines.backend.api.v2beta1.Run.scheduled_at:type_name -> google.protobuf.Timestamp
+	40, // 6: kubeflow.pipelines.backend.api.v2beta1.Run.finished_at:type_name -> google.protobuf.Timestamp
 	0,  // 7: kubeflow.pipelines.backend.api.v2beta1.Run.state:type_name -> kubeflow.pipelines.backend.api.v2beta1.RuntimeState
-	24, // 8: kubeflow.pipelines.backend.api.v2beta1.Run.error:type_name -> google.rpc.Status
+	41, // 8: kubeflow.pipelines.backend.api.v2beta1.Run.error:type_name -> google.rpc.Status
 	5,  // 9: kubeflow.pipelines.backend.api.v2beta1.Run.run_details:type_name -> kubeflow.pipelines.backend.api.v2beta1.RunDetails
 	4,  // 10: kubeflow.pipelines.backend.api.v2beta1.Run.state_history:type_name -> kubeflow.pipelines.backend.api.v2beta1.RuntimeStatus
-	23, // 11: kubeflow.pipelines.backend.api.v2beta1.RuntimeStatus.update_time:type_name -> google.protobuf.Timestamp
+	40, // 11: kubeflow.pipelines.backend.api.v2beta1.RuntimeStatus.update_time:type_name -> google.protobuf.Timestamp
 	0,  // 12: kubeflow.pipelines.backend.api.v2beta1.RuntimeStatus.state:type_name -> kubeflow.pipelines.backend.api.v2beta1.RuntimeState
-	24, // 13: kubeflow.pipelines.backend.api.v2beta1.RuntimeStatus.error:type_name -> google.rpc.Status
+	41, // 13: kubeflow.pipelines.backend.api.v2beta1.RuntimeStatus.error:type_name -> google.rpc.Status
 	6,  // 14: kubeflow.pipelines.backend.api.v2beta1.RunDetails.task_details:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail
-	23, // 15: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.create_time:type_name -> google.protobuf.Timestamp
-	23, // 16: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.start_time:type_name -> google.protobuf.Timestamp
-	23, // 17: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.end_time:type_name -> google.protobuf.Timestamp
+	40, // 15: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.create_time:type_name -> google.protobuf.Timestamp
+	40, // 16: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.start_time:type_name -> google.protobuf.Timestamp
+	40, // 17: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.end_time:type_name -> google.protobuf.Timestamp
 	7,  // 18: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.executor_detail:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineTaskExecutorDetail
 	0,  // 19: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.state:type_name -> kubeflow.pipelines.backend.api.v2beta1.RuntimeState
-	24, // 20: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.error:type_name -> google.rpc.Status
-	18, // 21: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.inputs:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.InputsEntry
-	19, // 22: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.outputs:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.OutputsEntry
+	41, // 20: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.error:type_name -> google.rpc.Status
+	35, // 21: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.inputs:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.InputsEntry
+	36, // 22: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.outputs:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.OutputsEntry
 	4,  // 23: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.state_history:type_name -> kubeflow.pipelines.backend.api.v2beta1.RuntimeStatus
-	20, // 24: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.child_tasks:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.ChildTask
-	2,  // 25: kubeflow.pipelines.backend.api.v2beta1.CreateRunRequest.run:type_name -> kubeflow.pipelines.backend.api.v2beta1.Run
-	2,  // 26: kubeflow.pipelines.backend.api.v2beta1.ListRunsResponse.runs:type_name -> kubeflow.pipelines.backend.api.v2beta1.Run
-	8,  // 27: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.InputsEntry.value:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactList
-	8,  // 28: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.OutputsEntry.value:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactList
-	9,  // 29: kubeflow.pipelines.backend.api.v2beta1.RunService.CreateRun:input_type -> kubeflow.pipelines.backend.api.v2beta1.CreateRunRequest
-	10, // 30: kubeflow.pipelines.backend.api.v2beta1.RunService.GetRun:input_type -> kubeflow.pipelines.backend.api.v2beta1.GetRunRequest
-	11, // 31: kubeflow.pipelines.backend.api.v2beta1.RunService.ListRuns:input_type -> kubeflow.pipelines.backend.api.v2beta1.ListRunsRequest
-	14, // 32: kubeflow.pipelines.backend.api.v2beta1.RunService.ArchiveRun:input_type -> kubeflow.pipelines.backend.api.v2beta1.ArchiveRunRequest
-	15, // 33: kubeflow.pipelines.backend.api.v2beta1.RunService.UnarchiveRun:input_type -> kubeflow.pipelines.backend.api.v2beta1.UnarchiveRunRequest
-	16, // 34: kubeflow.pipelines.backend.api.v2beta1.RunService.DeleteRun:input_type -> kubeflow.pipelines.backend.api.v2beta1.DeleteRunRequest
-	12, // 35: kubeflow.pipelines.backend.api.v2beta1.RunService.TerminateRun:input_type -> kubeflow.pipelines.backend.api.v2beta1.TerminateRunRequest
-	17, // 36: kubeflow.pipelines.backend.api.v2beta1.RunService.RetryRun:input_type -> kubeflow.pipelines.backend.api.v2beta1.RetryRunRequest
-	2,  // 37: kubeflow.pipelines.backend.api.v2beta1.RunService.CreateRun:output_type -> kubeflow.pipelines.backend.api.v2beta1.Run
-	2,  // 38: kubeflow.pipelines.backend.api.v2beta1.RunService.GetRun:output_type -> kubeflow.pipelines.backend.api.v2beta1.Run
-	13, // 39: kubeflow.pipelines.backend.api.v2beta1.RunService.ListRuns:output_type -> kubeflow.pipelines.backend.api.v2beta1.ListRunsResponse
-	25, // 40: kubeflow.pipelines.backend.api.v2beta1.RunService.ArchiveRun:output_type -> google.protobuf.Empty
-	25, // 41: kubeflow.pipelines.backend.api.v2beta1.RunService.UnarchiveRun:output_type -> google.protobuf.Empty
-	25, // 42: kubeflow.pipelines.backend.api.v2beta1.RunService.DeleteRun:output_type -> google.protobuf.Empty
-	25, // 43: kubeflow.pipelines.backend.api.v2beta1.RunService.TerminateRun:output_type -> google.protobuf.Empty
-	25, // 44: kubeflow.pipelines.backend.api.v2beta1.RunService.RetryRun:output_type -> google.protobuf.Empty
-	37, // [37:45] is the sub-list for method output_type
-	29, // [29:37] is the sub-list for method input_type
-	29, // [29:29] is the sub-list for extension type_name
-	29, // [29:29] is the sub-list for extension extendee
-	0,  // [0:29] is the sub-list for field type_name
+	37, // 24: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.child_tasks:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.ChildTask
+	38, // 25: kubeflow.pipelines.backend.api.v2beta1.RunArtifact.properties:type_name -> google.protobuf.Struct
+	38, // 26: kubeflow.pipelines.backend.api.v2beta1.RunArtifact.custom_properties:type_name -> google.protobuf.Struct
+	40, // 27: kubeflow.pipelines.backend.api.v2beta1.RunArtifact.created_at:type_name -> google.protobuf.Timestamp
+	40, // 28: kubeflow.pipelines.backend.api.v2beta1.RunArtifact.last_updated_at:type_name -> google.protobuf.Timestamp
+	10, // 29: kubeflow.pipelines.backend.api.v2beta1.RunArtifact.usages:type_name -> kubeflow.pipelines.backend.api.v2beta1.RunArtifactUsage
+	40, // 30: kubeflow.pipelines.backend.api.v2beta1.RunArtifactUsage.recorded_at:type_name -> google.protobuf.Timestamp
+	9,  // 31: kubeflow.pipelines.backend.api.v2beta1.ListRunArtifactsResponse.artifacts:type_name -> kubeflow.pipelines.backend.api.v2beta1.RunArtifact
+	38, // 32: kubeflow.pipelines.backend.api.v2beta1.RunExecution.properties:type_name -> google.protobuf.Struct
+	38, // 33: kubeflow.pipelines.backend.api.v2beta1.RunExecution.custom_properties:type_name -> google.protobuf.Struct
+	40, // 34: kubeflow.pipelines.backend.api.v2beta1.RunExecution.created_at:type_name -> google.protobuf.Timestamp
+	40, // 35: kubeflow.pipelines.backend.api.v2beta1.RunExecution.last_updated_at:type_name -> google.protobuf.Timestamp
+	9,  // 36: kubeflow.pipelines.backend.api.v2beta1.RunExecution.input_artifacts:type_name -> kubeflow.pipelines.backend.api.v2beta1.RunArtifact
+	9,  // 37: kubeflow.pipelines.backend.api.v2beta1.RunExecution.output_artifacts:type_name -> kubeflow.pipelines.backend.api.v2beta1.RunArtifact
+	13, // 38: kubeflow.pipelines.backend.api.v2beta1.ListRunExecutionsResponse.executions:type_name -> kubeflow.pipelines.backend.api.v2beta1.RunExecution
+	6,  // 39: kubeflow.pipelines.backend.api.v2beta1.ListRunTasksResponse.tasks:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail
+	6,  // 40: kubeflow.pipelines.backend.api.v2beta1.RunTask.task:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail
+	13, // 41: kubeflow.pipelines.backend.api.v2beta1.RunTask.execution:type_name -> kubeflow.pipelines.backend.api.v2beta1.RunExecution
+	9,  // 42: kubeflow.pipelines.backend.api.v2beta1.RunTask.input_artifacts:type_name -> kubeflow.pipelines.backend.api.v2beta1.RunArtifact
+	9,  // 43: kubeflow.pipelines.backend.api.v2beta1.RunTask.output_artifacts:type_name -> kubeflow.pipelines.backend.api.v2beta1.RunArtifact
+	6,  // 44: kubeflow.pipelines.backend.api.v2beta1.RunLineageNode.task:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail
+	9,  // 45: kubeflow.pipelines.backend.api.v2beta1.RunLineageNode.artifact:type_name -> kubeflow.pipelines.backend.api.v2beta1.RunArtifact
+	40, // 46: kubeflow.pipelines.backend.api.v2beta1.RunLineageEdge.recorded_at:type_name -> google.protobuf.Timestamp
+	22, // 47: kubeflow.pipelines.backend.api.v2beta1.RunLineage.nodes:type_name -> kubeflow.pipelines.backend.api.v2beta1.RunLineageNode
+	23, // 48: kubeflow.pipelines.backend.api.v2beta1.RunLineage.edges:type_name -> kubeflow.pipelines.backend.api.v2beta1.RunLineageEdge
+	2,  // 49: kubeflow.pipelines.backend.api.v2beta1.CreateRunRequest.run:type_name -> kubeflow.pipelines.backend.api.v2beta1.Run
+	2,  // 50: kubeflow.pipelines.backend.api.v2beta1.ListRunsResponse.runs:type_name -> kubeflow.pipelines.backend.api.v2beta1.Run
+	8,  // 51: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.InputsEntry.value:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactList
+	8,  // 52: kubeflow.pipelines.backend.api.v2beta1.PipelineTaskDetail.OutputsEntry.value:type_name -> kubeflow.pipelines.backend.api.v2beta1.ArtifactList
+	25, // 53: kubeflow.pipelines.backend.api.v2beta1.RunService.CreateRun:input_type -> kubeflow.pipelines.backend.api.v2beta1.CreateRunRequest
+	26, // 54: kubeflow.pipelines.backend.api.v2beta1.RunService.GetRun:input_type -> kubeflow.pipelines.backend.api.v2beta1.GetRunRequest
+	14, // 55: kubeflow.pipelines.backend.api.v2beta1.RunService.ListRunExecutions:input_type -> kubeflow.pipelines.backend.api.v2beta1.ListRunExecutionsRequest
+	16, // 56: kubeflow.pipelines.backend.api.v2beta1.RunService.GetRunExecution:input_type -> kubeflow.pipelines.backend.api.v2beta1.GetRunExecutionRequest
+	11, // 57: kubeflow.pipelines.backend.api.v2beta1.RunService.ListRunArtifacts:input_type -> kubeflow.pipelines.backend.api.v2beta1.ListRunArtifactsRequest
+	21, // 58: kubeflow.pipelines.backend.api.v2beta1.RunService.GetRunLineage:input_type -> kubeflow.pipelines.backend.api.v2beta1.GetRunLineageRequest
+	18, // 59: kubeflow.pipelines.backend.api.v2beta1.RunService.ListRunTasks:input_type -> kubeflow.pipelines.backend.api.v2beta1.ListRunTasksRequest
+	17, // 60: kubeflow.pipelines.backend.api.v2beta1.RunService.GetRunTask:input_type -> kubeflow.pipelines.backend.api.v2beta1.GetRunTaskRequest
+	27, // 61: kubeflow.pipelines.backend.api.v2beta1.RunService.ListRuns:input_type -> kubeflow.pipelines.backend.api.v2beta1.ListRunsRequest
+	28, // 62: kubeflow.pipelines.backend.api.v2beta1.RunService.ListRunsByRecurringRun:input_type -> kubeflow.pipelines.backend.api.v2beta1.ListRunsByRecurringRunRequest
+	31, // 63: kubeflow.pipelines.backend.api.v2beta1.RunService.ArchiveRun:input_type -> kubeflow.pipelines.backend.api.v2beta1.ArchiveRunRequest
+	32, // 64: kubeflow.pipelines.backend.api.v2beta1.RunService.UnarchiveRun:input_type -> kubeflow.pipelines.backend.api.v2beta1.UnarchiveRunRequest
+	33, // 65: kubeflow.pipelines.backend.api.v2beta1.RunService.DeleteRun:input_type -> kubeflow.pipelines.backend.api.v2beta1.DeleteRunRequest
+	29, // 66: kubeflow.pipelines.backend.api.v2beta1.RunService.TerminateRun:input_type -> kubeflow.pipelines.backend.api.v2beta1.TerminateRunRequest
+	34, // 67: kubeflow.pipelines.backend.api.v2beta1.RunService.RetryRun:input_type -> kubeflow.pipelines.backend.api.v2beta1.RetryRunRequest
+	2,  // 68: kubeflow.pipelines.backend.api.v2beta1.RunService.CreateRun:output_type -> kubeflow.pipelines.backend.api.v2beta1.Run
+	2,  // 69: kubeflow.pipelines.backend.api.v2beta1.RunService.GetRun:output_type -> kubeflow.pipelines.backend.api.v2beta1.Run
+	15, // 70: kubeflow.pipelines.backend.api.v2beta1.RunService.ListRunExecutions:output_type -> kubeflow.pipelines.backend.api.v2beta1.ListRunExecutionsResponse
+	13, // 71: kubeflow.pipelines.backend.api.v2beta1.RunService.GetRunExecution:output_type -> kubeflow.pipelines.backend.api.v2beta1.RunExecution
+	12, // 72: kubeflow.pipelines.backend.api.v2beta1.RunService.ListRunArtifacts:output_type -> kubeflow.pipelines.backend.api.v2beta1.ListRunArtifactsResponse
+	24, // 73: kubeflow.pipelines.backend.api.v2beta1.RunService.GetRunLineage:output_type -> kubeflow.pipelines.backend.api.v2beta1.RunLineage
+	19, // 74: kubeflow.pipelines.backend.api.v2beta1.RunService.ListRunTasks:output_type -> kubeflow.pipelines.backend.api.v2beta1.ListRunTasksResponse
+	20, // 75: kubeflow.pipelines.backend.api.v2beta1.RunService.GetRunTask:output_type -> kubeflow.pipelines.backend.api.v2beta1.RunTask
+	30, // 76: kubeflow.pipelines.backend.api.v2beta1.RunService.ListRuns:output_type -> kubeflow.pipelines.backend.api.v2beta1.ListRunsResponse
+	30, // 77: kubeflow.pipelines.backend.api.v2beta1.RunService.ListRunsByRecurringRun:output_type -> kubeflow.pipelines.backend.api.v2beta1.ListRunsResponse
+	42, // 78: kubeflow.pipelines.backend.api.v2beta1.RunService.ArchiveRun:output_type -> google.protobuf.Empty
+	42, // 79: kubeflow.pipelines.backend.api.v2beta1.RunService.UnarchiveRun:output_type -> google.protobuf.Empty
+	42, // 80: kubeflow.pipelines.backend.api.v2beta1.RunService.DeleteRun:output_type -> google.protobuf.Empty
+	42, // 81: kubeflow.pipelines.backend.api.v2beta1.RunService.TerminateRun:output_type -> google.protobuf.Empty
+	42, // 82: kubeflow.pipelines.backend.api.v2beta1.RunService.RetryRun:output_type -> google.protobuf.Empty
+	68, // [68:83] is the sub-list for method output_type
+	53, // [53:68] is the sub-list for method input_type
+	53, // [53:53] is the sub-list for extension type_name
+	53, // [53:53] is the sub-list for extension extendee
+	0,  // [0:53] is the sub-list for field type_name
 }
 
 func init() { file_backend_api_v2beta1_run_proto_init() }
@@ -1824,7 +3223,11 @@ func file_backend_api_v2beta1_run_proto_init() {
 		(*Run_PipelineSpec)(nil),
 		(*Run_PipelineVersionReference)(nil),
 	}
-	file_backend_api_v2beta1_run_proto_msgTypes[18].OneofWrappers = []any{
+	file_backend_api_v2beta1_run_proto_msgTypes[20].OneofWrappers = []any{
+		(*RunLineageNode_Task)(nil),
+		(*RunLineageNode_Artifact)(nil),
+	}
+	file_backend_api_v2beta1_run_proto_msgTypes[35].OneofWrappers = []any{
 		(*PipelineTaskDetail_ChildTask_TaskId)(nil),
 		(*PipelineTaskDetail_ChildTask_PodName)(nil),
 	}
@@ -1834,7 +3237,7 @@ func file_backend_api_v2beta1_run_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_backend_api_v2beta1_run_proto_rawDesc), len(file_backend_api_v2beta1_run_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   19,
+			NumMessages:   36,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -93,20 +93,34 @@ func TestUploadPipeline(t *testing.T) {
 				PipelineID string `json:"pipeline_id"`
 				// v1 API and v2 API shared field
 				CreatedAt string `json:"created_at"`
+				// v2 API response for atomic pipeline and version creation.
+				Pipeline *struct {
+					PipelineID string `json:"pipeline_id"`
+					CreatedAt  string `json:"created_at"`
+				} `json:"pipeline"`
+				PipelineVersion *struct {
+					PipelineID        string `json:"pipeline_id"`
+					PipelineVersionID string `json:"pipeline_version_id"`
+				} `json:"pipeline_version"`
 			}{}
-			json.Unmarshal(response.Body.Bytes(), &parsedResponse)
-
-			// Verify time format is RFC3339.
-			assert.Equal(t, "1970-01-01T00:00:01Z", parsedResponse.CreatedAt)
+			assert.NoError(t, json.Unmarshal(response.Body.Bytes(), &parsedResponse))
 
 			// Verify v1 API returns v1 object while v2 API returns v2 object.
 			switch test.apiVersion {
 			case "v1beta1":
+				// Verify time format is RFC3339.
+				assert.Equal(t, "1970-01-01T00:00:01Z", parsedResponse.CreatedAt)
 				assert.Equal(t, "123e4567-e89b-12d3-a456-426655440000", parsedResponse.ID)
 				assert.Equal(t, "", parsedResponse.PipelineID)
 			case "v2beta1":
 				assert.Equal(t, "", parsedResponse.ID)
-				assert.Equal(t, "123e4567-e89b-12d3-a456-426655440000", parsedResponse.PipelineID)
+				assert.Equal(t, "", parsedResponse.PipelineID)
+				assert.NotNil(t, parsedResponse.Pipeline)
+				assert.NotNil(t, parsedResponse.PipelineVersion)
+				assert.Equal(t, "1970-01-01T00:00:01Z", parsedResponse.Pipeline.CreatedAt)
+				assert.Equal(t, DefaultFakeUUID, parsedResponse.Pipeline.PipelineID)
+				assert.Equal(t, DefaultFakeUUID, parsedResponse.PipelineVersion.PipelineID)
+				assert.Equal(t, DefaultFakeUUID, parsedResponse.PipelineVersion.PipelineVersionID)
 			}
 
 			opts, err := list.NewOptions(&model.Pipeline{}, 2, "", nil)
@@ -129,7 +143,6 @@ func TestUploadPipeline(t *testing.T) {
 					CreatedAtInSec: 2,
 					Name:           "hello-world.yaml",
 					DisplayName:    "hello-world.yaml",
-					Parameters:     "[]",
 					Status:         model.PipelineVersionReady,
 					PipelineId:     DefaultFakeUUID,
 				},
@@ -168,7 +181,6 @@ func TestUploadPipeline(t *testing.T) {
 					CreatedAtInSec: 2,
 					Name:           "hello-world.yaml",
 					DisplayName:    "hello-world.yaml",
-					Parameters:     "[]",
 					Status:         model.PipelineVersionReady,
 					PipelineId:     DefaultFakeUUID,
 					PipelineSpec:   model.LargeText(test.spec),
@@ -179,7 +191,6 @@ func TestUploadPipeline(t *testing.T) {
 					Name:           fakeVersionName,
 					DisplayName:    fakeVersionName,
 					Description:    fakeDescription,
-					Parameters:     "[]",
 					Status:         model.PipelineVersionReady,
 					PipelineId:     DefaultFakeUUID,
 					PipelineSpec:   model.LargeText(test.spec),
@@ -193,6 +204,91 @@ func TestUploadPipeline(t *testing.T) {
 			versionsExpect[0].PipelineSpec = versions[0].PipelineSpec
 			versionsExpect[1].PipelineSpec = versions[1].PipelineSpec
 			assert.Equal(t, versionsExpect, versions)
+		})
+	}
+}
+
+func TestUploadPipelineV2_ClientProvidedIDs(t *testing.T) {
+	const (
+		pipelineID          = "11111111-1111-4111-8111-111111111111"
+		initialVersionID    = "22222222-2222-4222-8222-222222222222"
+		additionalVersionID = "33333333-3333-4333-8333-333333333333"
+	)
+
+	clientManager, server := setupClientManagerAndServer()
+	bytesBuffer, writer := setupWriter("")
+	setWriterWithBuffer(FormFileKey, "client-ids.yaml", v2SpecHelloWorld, writer)
+	response := uploadPipeline(
+		"/apis/v2beta1/pipelines/upload?pipeline_id="+pipelineID+"&pipeline_version_id="+initialVersionID,
+		bytes.NewReader(bytesBuffer.Bytes()), writer, server.UploadPipeline)
+	assert.Equal(t, http.StatusOK, response.Code, response.Body.String())
+	assert.Contains(t, response.Body.String(), `"pipeline_id":"`+pipelineID+`"`)
+	assert.Contains(t, response.Body.String(), `"pipeline_version_id":"`+initialVersionID+`"`)
+
+	pipeline, err := clientManager.PipelineStore().GetPipeline(pipelineID)
+	assert.NoError(t, err)
+	assert.Equal(t, pipelineID, pipeline.UUID)
+	version, err := clientManager.PipelineStore().GetPipelineVersion(initialVersionID)
+	assert.NoError(t, err)
+	assert.Equal(t, pipelineID, version.PipelineId)
+
+	bytesBuffer, writer = setupWriter("")
+	setWriterWithBuffer(FormFileKey, "client-version-id.yaml", v2SpecHelloWorld, writer)
+	response = uploadPipeline(
+		"/apis/v2beta1/pipelines/upload_version?pipelineid="+pipelineID+"&pipeline_version_id="+additionalVersionID+"&name=client-version-id",
+		bytes.NewReader(bytesBuffer.Bytes()), writer, server.UploadPipelineVersion)
+	assert.Equal(t, http.StatusOK, response.Code, response.Body.String())
+	assert.Contains(t, response.Body.String(), `"pipeline_version_id":"`+additionalVersionID+`"`)
+	version, err = clientManager.PipelineStore().GetPipelineVersion(additionalVersionID)
+	assert.NoError(t, err)
+	assert.Equal(t, pipelineID, version.PipelineId)
+
+	bytesBuffer, writer = setupWriter("")
+	setWriterWithBuffer(FormFileKey, "duplicate-pipeline-id.yaml", v2SpecHelloWorld, writer)
+	response = uploadPipeline(
+		"/apis/v2beta1/pipelines/upload?pipeline_id="+pipelineID+"&pipeline_version_id=44444444-4444-4444-8444-444444444444&name=duplicate-pipeline-id",
+		bytes.NewReader(bytesBuffer.Bytes()), writer, server.UploadPipeline)
+	assert.Equal(t, http.StatusConflict, response.Code, response.Body.String())
+
+	bytesBuffer, writer = setupWriter("")
+	setWriterWithBuffer(FormFileKey, "duplicate-version-id.yaml", v2SpecHelloWorld, writer)
+	response = uploadPipeline(
+		"/apis/v2beta1/pipelines/upload_version?pipelineid="+pipelineID+"&pipeline_version_id="+additionalVersionID+"&name=duplicate-version-id",
+		bytes.NewReader(bytesBuffer.Bytes()), writer, server.UploadPipelineVersion)
+	assert.Equal(t, http.StatusConflict, response.Code, response.Body.String())
+}
+
+func TestUploadPipelineV2_RejectsInvalidClientProvidedIDs(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+	}{
+		{
+			name: "invalid pipeline ID",
+			url:  "/apis/v2beta1/pipelines/upload?pipeline_id=not-a-uuid",
+		},
+		{
+			name: "invalid initial version ID",
+			url:  "/apis/v2beta1/pipelines/upload?pipeline_version_id=not-a-uuid",
+		},
+		{
+			name: "invalid additional version ID",
+			url:  "/apis/v2beta1/pipelines/upload_version?pipelineid=11111111-1111-4111-8111-111111111111&pipeline_version_id=not-a-uuid",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, server := setupClientManagerAndServer()
+			bytesBuffer, writer := setupWriter("")
+			setWriterWithBuffer(FormFileKey, "invalid-id.yaml", v2SpecHelloWorld, writer)
+			handler := server.UploadPipeline
+			if strings.Contains(test.url, "upload_version") {
+				handler = server.UploadPipelineVersion
+			}
+			response := uploadPipeline(test.url, bytes.NewReader(bytesBuffer.Bytes()), writer, handler)
+			assert.Equal(t, http.StatusBadRequest, response.Code, response.Body.String())
+			assert.Contains(t, response.Body.String(), "must be a canonical UUID")
 		})
 	}
 }
@@ -265,21 +361,30 @@ func TestUploadPipelineV2_NameValidation(t *testing.T) {
 				assert.Equal(t, 200, response.Code)
 
 				parsedResponse := struct {
-					// v1 API only field
-					ID string `json:"id"`
-					// v2 API only field
+					ID         string `json:"id"`
 					PipelineID string `json:"pipeline_id"`
-					// v1 API and v2 API shared field
-					CreatedAt string `json:"created_at"`
+					CreatedAt  string `json:"created_at"`
+					Pipeline   *struct {
+						PipelineID string `json:"pipeline_id"`
+						CreatedAt  string `json:"created_at"`
+					} `json:"pipeline"`
+					PipelineVersion *struct {
+						PipelineID        string `json:"pipeline_id"`
+						PipelineVersionID string `json:"pipeline_version_id"`
+					} `json:"pipeline_version"`
 				}{}
-				json.Unmarshal(response.Body.Bytes(), &parsedResponse)
+				assert.NoError(t, json.Unmarshal(response.Body.Bytes(), &parsedResponse))
 
-				// Verify time format is RFC3339.
-				assert.Equal(t, "1970-01-01T00:00:01Z", parsedResponse.CreatedAt)
-
-				// Verify v1 API returns v1 object while v2 API returns v2 object.
+				// Verify the V2 atomic response is nested and contains both IDs.
 				assert.Equal(t, "", parsedResponse.ID)
-				assert.Equal(t, "123e4567-e89b-12d3-a456-426655440000", parsedResponse.PipelineID)
+				assert.Equal(t, "", parsedResponse.PipelineID)
+				assert.Equal(t, "", parsedResponse.CreatedAt)
+				assert.NotNil(t, parsedResponse.Pipeline)
+				assert.NotNil(t, parsedResponse.PipelineVersion)
+				assert.Equal(t, "1970-01-01T00:00:01Z", parsedResponse.Pipeline.CreatedAt)
+				assert.Equal(t, DefaultFakeUUID, parsedResponse.Pipeline.PipelineID)
+				assert.Equal(t, DefaultFakeUUID, parsedResponse.PipelineVersion.PipelineID)
+				assert.Equal(t, DefaultFakeUUID, parsedResponse.PipelineVersion.PipelineVersionID)
 			}
 		})
 	}
@@ -389,7 +494,6 @@ func TestUploadPipeline_Tarball(t *testing.T) {
 			CreatedAtInSec: 2,
 			Name:           "arguments.tar.gz",
 			DisplayName:    "arguments.tar.gz",
-			Parameters:     "[{\"name\":\"param1\",\"value\":\"hello\"},{\"name\":\"param2\"}]",
 			Status:         model.PipelineVersionReady,
 			PipelineId:     DefaultFakeUUID,
 			PipelineSpec:   "{\"kind\":\"Workflow\",\"apiVersion\":\"argoproj.io/v1alpha1\",\"metadata\":{\"generateName\":\"arguments-parameters-\",\"creationTimestamp\":null},\"spec\":{\"templates\":[{\"name\":\"whalesay\",\"inputs\":{\"parameters\":[{\"name\":\"param1\"},{\"name\":\"param2\"}]},\"outputs\":{},\"metadata\":{},\"container\":{\"name\":\"\",\"image\":\"docker/whalesay:latest\",\"command\":[\"cowsay\"],\"args\":[\"{{inputs.parameters.param1}}-{{inputs.parameters.param2}}\"],\"resources\":{}}}],\"entrypoint\":\"whalesay\",\"arguments\":{\"parameters\":[{\"name\":\"param1\",\"value\":\"hello\"},{\"name\":\"param2\"}]}},\"status\":{\"startedAt\":null,\"finishedAt\":null}}",
@@ -422,7 +526,6 @@ func TestUploadPipeline_Tarball(t *testing.T) {
 			CreatedAtInSec: 2,
 			Name:           "arguments.tar.gz",
 			DisplayName:    "arguments.tar.gz",
-			Parameters:     "[{\"name\":\"param1\",\"value\":\"hello\"},{\"name\":\"param2\"}]",
 			Status:         model.PipelineVersionReady,
 			PipelineId:     DefaultFakeUUID,
 			PipelineSpec:   "{\"kind\":\"Workflow\",\"apiVersion\":\"argoproj.io/v1alpha1\",\"metadata\":{\"generateName\":\"arguments-parameters-\",\"creationTimestamp\":null},\"spec\":{\"templates\":[{\"name\":\"whalesay\",\"inputs\":{\"parameters\":[{\"name\":\"param1\"},{\"name\":\"param2\"}]},\"outputs\":{},\"metadata\":{},\"container\":{\"name\":\"\",\"image\":\"docker/whalesay:latest\",\"command\":[\"cowsay\"],\"args\":[\"{{inputs.parameters.param1}}-{{inputs.parameters.param2}}\"],\"resources\":{}}}],\"entrypoint\":\"whalesay\",\"arguments\":{\"parameters\":[{\"name\":\"param1\",\"value\":\"hello\"},{\"name\":\"param2\"}]}},\"status\":{\"startedAt\":null,\"finishedAt\":null}}",
@@ -432,7 +535,6 @@ func TestUploadPipeline_Tarball(t *testing.T) {
 			CreatedAtInSec: 3,
 			Name:           "arguments-version.tar.gz",
 			DisplayName:    "arguments-version.tar.gz",
-			Parameters:     "[{\"name\":\"param1\",\"value\":\"hello\"},{\"name\":\"param2\"}]",
 			Status:         model.PipelineVersionReady,
 			PipelineId:     DefaultFakeUUID,
 			PipelineSpec:   "{\"kind\":\"Workflow\",\"apiVersion\":\"argoproj.io/v1alpha1\",\"metadata\":{\"generateName\":\"arguments-parameters-\",\"creationTimestamp\":null},\"spec\":{\"templates\":[{\"name\":\"whalesay\",\"inputs\":{\"parameters\":[{\"name\":\"param1\"},{\"name\":\"param2\"}]},\"outputs\":{},\"metadata\":{},\"container\":{\"name\":\"\",\"image\":\"docker/whalesay:latest\",\"command\":[\"cowsay\"],\"args\":[\"{{inputs.parameters.param1}}-{{inputs.parameters.param2}}\"],\"resources\":{}}}],\"entrypoint\":\"whalesay\",\"arguments\":{\"parameters\":[{\"name\":\"param1\",\"value\":\"hello\"},{\"name\":\"param2\"}]}},\"status\":{\"startedAt\":null,\"finishedAt\":null}}",
@@ -492,7 +594,6 @@ func TestUploadPipeline_SpecifyFileName(t *testing.T) {
 			CreatedAtInSec: 2,
 			Name:           "foo-bar",
 			DisplayName:    "foo-bar",
-			Parameters:     "[]",
 			Status:         model.PipelineVersionReady,
 			PipelineId:     DefaultFakeUUID,
 			PipelineSpec:   "{\"kind\":\"Workflow\",\"apiVersion\":\"argoproj.io/v1alpha1\",\"metadata\":{\"creationTimestamp\":null},\"spec\":{\"arguments\":{}},\"status\":{\"startedAt\":null,\"finishedAt\":null}}",
@@ -544,7 +645,6 @@ func TestUploadPipeline_SpecifyFileDescription(t *testing.T) {
 			CreatedAtInSec: 2,
 			Name:           "foo-bar",
 			DisplayName:    "foo-bar",
-			Parameters:     "[]",
 			Status:         model.PipelineVersionReady,
 			PipelineId:     DefaultFakeUUID,
 			PipelineSpec:   "{\"kind\":\"Workflow\",\"apiVersion\":\"argoproj.io/v1alpha1\",\"metadata\":{\"creationTimestamp\":null},\"spec\":{\"arguments\":{}},\"status\":{\"startedAt\":null,\"finishedAt\":null}}",

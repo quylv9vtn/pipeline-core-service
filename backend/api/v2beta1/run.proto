@@ -77,11 +77,63 @@ service RunService {
     };
   }
 
+  // Lists the ML Metadata executions corresponding to tasks in a run.
+  rpc ListRunExecutions(ListRunExecutionsRequest) returns (ListRunExecutionsResponse) {
+    option (google.api.http) = {
+      get: "/apis/v2beta1/runs/{run_id}/executions"
+    };
+  }
+
+  // Returns one ML Metadata execution after verifying that it belongs to the
+  // requested run.
+  rpc GetRunExecution(GetRunExecutionRequest) returns (RunExecution) {
+    option (google.api.http) = {
+      get: "/apis/v2beta1/runs/{run_id}/executions/{execution_id}"
+    };
+  }
+
+  // Lists artifacts consumed or produced by tasks in a run. Artifact metadata
+  // is read directly from ML Metadata after authorizing access to the run.
+  rpc ListRunArtifacts(ListRunArtifactsRequest) returns (ListRunArtifactsResponse) {
+    option (google.api.http) = {
+      get: "/apis/v2beta1/runs/{run_id}/artifacts"
+    };
+  }
+
+  // Returns the task-to-artifact lineage graph for a run.
+  rpc GetRunLineage(GetRunLineageRequest) returns (RunLineage) {
+    option (google.api.http) = {
+      get: "/apis/v2beta1/runs/{run_id}/lineage"
+    };
+  }
+
+  // Lists the pipeline tasks belonging to a run. Execution IDs and pod names
+  // are enriched from ML Metadata when persistence data is incomplete.
+  rpc ListRunTasks(ListRunTasksRequest) returns (ListRunTasksResponse) {
+    option (google.api.http) = {
+      get: "/apis/v2beta1/runs/{run_id}/tasks"
+    };
+  }
+
+  // Returns one task and its corresponding ML Metadata execution and artifacts.
+  rpc GetRunTask(GetRunTaskRequest) returns (RunTask) {
+    option (google.api.http) = {
+      get: "/apis/v2beta1/runs/{run_id}/tasks/{task_id}"
+    };
+  }
+
   // Finds all runs in an experiment given by experiment ID.
   // If experiment id is not specified, finds all runs across all experiments.
   rpc ListRuns(ListRunsRequest) returns (ListRunsResponse) {
     option (google.api.http) = {
       get: "/apis/v2beta1/runs"
+    };
+  }
+
+  // Finds all runs created by a recurring run (job).
+  rpc ListRunsByRecurringRun(ListRunsByRecurringRunRequest) returns (ListRunsResponse) {
+    option (google.api.http) = {
+      get: "/apis/v2beta1/recurringruns/{recurring_run_id}/runs"
     };
   }
 
@@ -368,6 +420,152 @@ message ArtifactList {
   repeated int64 artifact_ids = 1;
 }
 
+// An artifact consumed or produced by a task in a run.
+message RunArtifact {
+  // ML Metadata artifact ID.
+  int64 artifact_id = 1;
+
+  // ML Metadata artifact type ID and name.
+  int64 type_id = 2;
+  string type_name = 3;
+
+  // ML Metadata artifact name and physical storage URI.
+  string name = 4;
+  string uri = 5;
+  string external_id = 6;
+
+  // ML Metadata artifact state, for example LIVE or DELETED.
+  string state = 7;
+
+  // Typed and custom ML Metadata properties converted to JSON values.
+  google.protobuf.Struct properties = 8;
+  google.protobuf.Struct custom_properties = 9;
+
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp last_updated_at = 11;
+
+  // All task/execution relationships for this artifact within this run.
+  repeated RunArtifactUsage usages = 12;
+}
+
+// A relationship between an ML Metadata artifact and a task execution.
+message RunArtifactUsage {
+  string task_id = 1;
+  int64 execution_id = 2;
+
+  // Artifact input/output name taken from the ML Metadata event path.
+  string key = 3;
+
+  // ML Metadata event type, for example INPUT, OUTPUT, INTERNAL_INPUT,
+  // INTERNAL_OUTPUT, DECLARED_INPUT, DECLARED_OUTPUT or PENDING_OUTPUT.
+  string event_type = 4;
+
+  google.protobuf.Timestamp recorded_at = 5;
+}
+
+message ListRunArtifactsRequest {
+  string run_id = 1;
+}
+
+message ListRunArtifactsResponse {
+  string run_id = 1;
+  repeated RunArtifact artifacts = 2;
+}
+
+// ML Metadata execution corresponding to a pipeline task.
+message RunExecution {
+  int64 execution_id = 1;
+  int64 type_id = 2;
+  string type_name = 3;
+  string name = 4;
+  string external_id = 5;
+  string state = 6;
+  google.protobuf.Struct properties = 7;
+  google.protobuf.Struct custom_properties = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp last_updated_at = 10;
+
+  // Pipeline task and orchestration pod corresponding to this execution.
+  string task_id = 11;
+  string pod_name = 12;
+
+  // Populated by GetRunExecution. ListRunExecutions returns execution
+  // summaries and leaves these fields empty to keep list responses compact.
+  repeated RunArtifact input_artifacts = 13;
+  repeated RunArtifact output_artifacts = 14;
+}
+
+message ListRunExecutionsRequest {
+  string run_id = 1;
+}
+
+message ListRunExecutionsResponse {
+  string run_id = 1;
+  repeated RunExecution executions = 2;
+  int32 total_size = 3;
+}
+
+message GetRunExecutionRequest {
+  string run_id = 1;
+  int64 execution_id = 2;
+}
+
+message GetRunTaskRequest {
+  string run_id = 1;
+  string task_id = 2;
+}
+
+message ListRunTasksRequest {
+  string run_id = 1;
+}
+
+message ListRunTasksResponse {
+  string run_id = 1;
+  repeated PipelineTaskDetail tasks = 2;
+  int32 total_size = 3;
+}
+
+// Detailed view of one task in a run.
+message RunTask {
+  PipelineTaskDetail task = 1;
+  RunExecution execution = 2;
+  repeated RunArtifact input_artifacts = 3;
+  repeated RunArtifact output_artifacts = 4;
+}
+
+message GetRunLineageRequest {
+  string run_id = 1;
+}
+
+// A task or artifact node in a run lineage graph.
+message RunLineageNode {
+  // Stable graph-local ID: task:<task_id> or artifact:<artifact_id>.
+  string node_id = 1;
+
+  oneof node {
+    PipelineTaskDetail task = 2;
+    RunArtifact artifact = 3;
+  }
+}
+
+// A directed ML Metadata event edge in a run lineage graph.
+message RunLineageEdge {
+  string source_node_id = 1;
+  string target_node_id = 2;
+  string task_id = 3;
+  int64 execution_id = 4;
+  int64 artifact_id = 5;
+  string key = 6;
+  string event_type = 7;
+  google.protobuf.Timestamp recorded_at = 8;
+}
+
+message RunLineage {
+  string run_id = 1;
+  repeated RunLineageNode nodes = 2;
+  repeated RunLineageEdge edges = 3;
+}
+
 message CreateRunRequest {
   // The ID of the parent experiment.
   string experiment_id = 1 [deprecated = true];
@@ -408,6 +606,23 @@ message ListRunsRequest {
   // A url-encoded, JSON-serialized Filter protocol buffer (see
   // [filter.proto](https://github.com/kubeflow/pipelines/blob/master/backend/api/filter.proto)).
   string filter = 6;
+}
+
+message ListRunsByRecurringRunRequest {
+  // The ID of the recurring run (job) that created the runs.
+  string recurring_run_id = 1;
+
+  // A page token returned by the previous request.
+  string page_token = 2;
+
+  // The number of runs to return per page.
+  int32 page_size = 3;
+
+  // Can be format of "field_name", "field_name asc" or "field_name desc".
+  string sort_by = 4;
+
+  // A url-encoded, JSON-serialized Filter protocol buffer.
+  string filter = 5;
 }
 
 message TerminateRunRequest {

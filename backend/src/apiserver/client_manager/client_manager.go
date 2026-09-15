@@ -153,6 +153,10 @@ func (c *ClientManager) RunStore() storage.RunStoreInterface {
 	return c.runStore
 }
 
+func (c *ClientManager) QuotaStore() storage.QuotaStoreInterface {
+	return storage.NewQuotaStore(c.db)
+}
+
 func (c *ClientManager) DBStatusStore() storage.DBStatusStoreInterface {
 	return c.dBStatusStore
 }
@@ -575,6 +579,8 @@ func autoMigrate(db *gorm.DB) error {
 		&model.Job{},
 		&model.Run{},
 		&model.Task{},
+		&model.QuotaLimit{},
+		&model.QuotaAllocation{},
 	); err != nil {
 		return fmt.Errorf("AutoMigrate failed: %w", err)
 	}
@@ -597,10 +603,14 @@ func pruneV1Schema(db *gorm.DB) error {
 		}
 	}
 
+	if err := backfillRunStateFromConditions(db); err != nil {
+		return err
+	}
+
 	legacyColumns := map[string][]string{
 		"pipelines":         {"DefaultVersionId", "Parameters"},
 		"pipeline_versions": {"Parameters"},
-		"run_details":       {"Parameters"},
+		"run_details":       {"Parameters", "Conditions"},
 		"jobs":              {"Parameters"},
 	}
 	for table, columns := range legacyColumns {
@@ -639,6 +649,53 @@ func pruneV1Schema(db *gorm.DB) error {
 				return fmt.Errorf("failed to remove duplicate PostgreSQL column: %w", err)
 			}
 		}
+	}
+	return nil
+}
+
+// backfillRunStateFromConditions makes the V2 State column authoritative
+// before the deprecated V1 Conditions column is removed. It only touches rows
+// whose State is missing, so repeated startup migrations are idempotent.
+func backfillRunStateFromConditions(db *gorm.DB) error {
+	hasConditions, err := hasExactColumn(db, "run_details", "Conditions")
+	if err != nil {
+		return fmt.Errorf("failed to inspect run_details.Conditions: %w", err)
+	}
+	if !hasConditions {
+		return nil
+	}
+	hasState, err := hasExactColumn(db, "run_details", "State")
+	if err != nil {
+		return fmt.Errorf("failed to inspect run_details.State: %w", err)
+	}
+	if !hasState {
+		return fmt.Errorf("cannot remove run_details.Conditions before the V2 State column exists")
+	}
+
+	quote := `"`
+	if db.Dialector.Name() == "mysql" {
+		quote = "`"
+	}
+	table := quote + "run_details" + quote
+	state := quote + "State" + quote
+	conditions := quote + "Conditions" + quote
+	statement := fmt.Sprintf(`UPDATE %s SET %s = CASE UPPER(%s)
+		WHEN 'PENDING' THEN 'PENDING'
+		WHEN 'RUNNING' THEN 'RUNNING'
+		WHEN 'SUCCEEDED' THEN 'SUCCEEDED'
+		WHEN 'DONE' THEN 'SUCCEEDED'
+		WHEN 'SKIPPED' THEN 'SKIPPED'
+		WHEN 'FAILED' THEN 'FAILED'
+		WHEN 'ERROR' THEN 'FAILED'
+		WHEN 'TERMINATING' THEN 'CANCELING'
+		WHEN 'CANCELING' THEN 'CANCELING'
+		WHEN 'CANCELED' THEN 'CANCELED'
+		WHEN 'DISABLED' THEN 'CANCELED'
+		WHEN 'PAUSED' THEN 'PAUSED'
+		ELSE 'RUNTIME_STATE_UNSPECIFIED'
+	END WHERE %s IS NULL OR %s = ''`, table, state, conditions, state, state)
+	if err := db.Exec(statement).Error; err != nil {
+		return fmt.Errorf("failed to backfill V2 run state: %w", err)
 	}
 	return nil
 }

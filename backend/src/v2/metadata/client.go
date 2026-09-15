@@ -818,6 +818,42 @@ func (c *Client) GetExecutions(ctx context.Context, ids []int64) ([]*pb.Executio
 	return res.Executions, nil
 }
 
+// GetContextByTypeAndName retrieves an MLMD context without creating it.
+// This read-only variant is used by the API server metadata endpoints.
+func (c *Client) GetContextByTypeAndName(ctx context.Context, typeName, contextName string) (*pb.Context, error) {
+	res, err := c.svc.GetContextByTypeAndName(ctx, &pb.GetContextByTypeAndNameRequest{
+		TypeName:    proto.String(typeName),
+		ContextName: proto.String(contextName),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res.GetContext(), nil
+}
+
+// GetExecutionsByContext retrieves every execution associated with a context,
+// following MLMD pagination until the complete result has been read.
+func (c *Client) GetExecutionsByContext(ctx context.Context, contextID int64) ([]*pb.Execution, error) {
+	executions := make([]*pb.Execution, 0)
+	nextPageToken := ""
+	for {
+		res, err := c.svc.GetExecutionsByContext(ctx, &pb.GetExecutionsByContextRequest{
+			ContextId: proto.Int64(contextID),
+			Options: &pb.ListOperationOptions{
+				NextPageToken: proto.String(nextPageToken),
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		executions = append(executions, res.GetExecutions()...)
+		if res.GetNextPageToken() == "" {
+			return executions, nil
+		}
+		nextPageToken = res.GetNextPageToken()
+	}
+}
+
 // GetExecutionByTypeAndName retrieves an execution by its type and name from the service.
 // Returns the Execution object if found, or an error if not found or if the request fails.
 func (c *Client) GetExecutionByTypeAndName(ctx context.Context, typeName, name string) (*Execution, error) {
@@ -1002,6 +1038,41 @@ func (c *Client) GetEventsByArtifactIDs(ctx context.Context, artifactIds []int64
 	return res.Events, nil
 }
 
+// GetEventsByExecutionIDs returns all artifact events associated with the
+// supplied MLMD executions. It is intentionally read-only and is used by the
+// API server's run-scoped artifact and lineage endpoints.
+func (c *Client) GetEventsByExecutionIDs(ctx context.Context, executionIds []int64) ([]*pb.Event, error) {
+	res, err := c.svc.GetEventsByExecutionIDs(ctx, &pb.GetEventsByExecutionIDsRequest{
+		ExecutionIds: executionIds,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res.GetEvents(), nil
+}
+
+// GetArtifactTypes returns MLMD artifact types by ID.
+func (c *Client) GetArtifactTypes(ctx context.Context, typeIds []int64) ([]*pb.ArtifactType, error) {
+	res, err := c.svc.GetArtifactTypesByID(ctx, &pb.GetArtifactTypesByIDRequest{
+		TypeIds: typeIds,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res.GetArtifactTypes(), nil
+}
+
+// GetExecutionTypes returns MLMD execution types by ID.
+func (c *Client) GetExecutionTypes(ctx context.Context, typeIds []int64) ([]*pb.ExecutionType, error) {
+	res, err := c.svc.GetExecutionTypesByID(ctx, &pb.GetExecutionTypesByIDRequest{
+		TypeIds: typeIds,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res.GetExecutionTypes(), nil
+}
+
 func (c *Client) GetArtifactName(ctx context.Context, artifactId int64) (string, error) {
 	mlmdEvents, err := c.GetEventsByArtifactIDs(ctx, []int64{artifactId})
 	if err != nil {
@@ -1023,6 +1094,29 @@ func (c *Client) GetArtifacts(ctx context.Context, ids []int64) ([]*pb.Artifact,
 		return nil, err
 	}
 	return res.Artifacts, nil
+}
+
+// GetArtifactsByContext retrieves every artifact attributed to an MLMD
+// context, following pagination until the complete result has been read.
+func (c *Client) GetArtifactsByContext(ctx context.Context, contextID int64) ([]*pb.Artifact, error) {
+	artifacts := make([]*pb.Artifact, 0)
+	nextPageToken := ""
+	for {
+		res, err := c.svc.GetArtifactsByContext(ctx, &pb.GetArtifactsByContextRequest{
+			ContextId: proto.Int64(contextID),
+			Options: &pb.ListOperationOptions{
+				NextPageToken: proto.String(nextPageToken),
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		artifacts = append(artifacts, res.GetArtifacts()...)
+		if res.GetNextPageToken() == "" {
+			return artifacts, nil
+		}
+		nextPageToken = res.GetNextPageToken()
+	}
 }
 
 // GetOutputArtifactsByExecutionId ...

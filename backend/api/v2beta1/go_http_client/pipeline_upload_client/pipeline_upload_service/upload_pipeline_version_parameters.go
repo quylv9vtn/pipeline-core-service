@@ -61,17 +61,39 @@ UploadPipelineVersionParams contains all the parameters to send to the API endpo
 */
 type UploadPipelineVersionParams struct {
 
-	// Description.
+	/* Description.
+
+	   Optional description for the pipeline version.
+	*/
 	Description *string
 
-	// DisplayName.
+	/* DisplayName.
+
+	   Optional display name for the pipeline version.
+	*/
 	DisplayName *string
 
-	// Name.
+	/* Name.
+
+	   Optional pipeline version name. If omitted, the name is derived from the uploaded package.
+	*/
 	Name *string
 
-	// Pipelineid.
-	Pipelineid *string
+	/* PipelineVersionID.
+
+	   Optional client-provided ID for the new pipeline version. If omitted, the database-backed API server generates one.
+
+	   Format: uuid
+	*/
+	PipelineVersionID *strfmt.UUID
+
+	/* Pipelineid.
+
+	   ID of the existing parent pipeline.
+
+	   Format: uuid
+	*/
+	Pipelineid strfmt.UUID
 
 	/* Uploadfile.
 
@@ -165,14 +187,25 @@ func (o *UploadPipelineVersionParams) SetName(name *string) {
 	o.Name = name
 }
 
+// WithPipelineVersionID adds the pipelineVersionID to the upload pipeline version params
+func (o *UploadPipelineVersionParams) WithPipelineVersionID(pipelineVersionID *strfmt.UUID) *UploadPipelineVersionParams {
+	o.SetPipelineVersionID(pipelineVersionID)
+	return o
+}
+
+// SetPipelineVersionID adds the pipelineVersionId to the upload pipeline version params
+func (o *UploadPipelineVersionParams) SetPipelineVersionID(pipelineVersionID *strfmt.UUID) {
+	o.PipelineVersionID = pipelineVersionID
+}
+
 // WithPipelineid adds the pipelineid to the upload pipeline version params
-func (o *UploadPipelineVersionParams) WithPipelineid(pipelineid *string) *UploadPipelineVersionParams {
+func (o *UploadPipelineVersionParams) WithPipelineid(pipelineid strfmt.UUID) *UploadPipelineVersionParams {
 	o.SetPipelineid(pipelineid)
 	return o
 }
 
 // SetPipelineid adds the pipelineid to the upload pipeline version params
-func (o *UploadPipelineVersionParams) SetPipelineid(pipelineid *string) {
+func (o *UploadPipelineVersionParams) SetPipelineid(pipelineid strfmt.UUID) {
 	o.Pipelineid = pipelineid
 }
 
@@ -246,20 +279,30 @@ func (o *UploadPipelineVersionParams) WriteToRequest(r runtime.ClientRequest, re
 		}
 	}
 
-	if o.Pipelineid != nil {
+	if o.PipelineVersionID != nil {
 
-		// query param pipelineid
-		var qrPipelineid string
+		// query param pipeline_version_id
+		var qrPipelineVersionID strfmt.UUID
 
-		if o.Pipelineid != nil {
-			qrPipelineid = *o.Pipelineid
+		if o.PipelineVersionID != nil {
+			qrPipelineVersionID = *o.PipelineVersionID
 		}
-		qPipelineid := qrPipelineid
-		if qPipelineid != "" {
+		qPipelineVersionID := qrPipelineVersionID.String()
+		if qPipelineVersionID != "" {
 
-			if err := r.SetQueryParam("pipelineid", qPipelineid); err != nil {
+			if err := r.SetQueryParam("pipeline_version_id", qPipelineVersionID); err != nil {
 				return err
 			}
+		}
+	}
+
+	// query param pipelineid
+	qrPipelineid := o.Pipelineid
+	qPipelineid := qrPipelineid.String()
+	if qPipelineid != "" {
+
+		if err := r.SetQueryParam("pipelineid", qPipelineid); err != nil {
+			return err
 		}
 	}
 	// form file param uploadfile

@@ -38,13 +38,14 @@ import (
 // Converts API experiment to its internal representation.
 // Supports both v1beta1 abd v2beta1 API.
 func toModelExperiment(e interface{}) (*model.Experiment, error) {
-	var namespace, name, description string
+	var uuid, namespace, name, description string
 	switch apiExperiment := e.(type) {
 	case *apiv1beta1.Experiment:
 		name = apiExperiment.GetName()
 		namespace = getNamespaceFromResourceReferenceV1(apiExperiment.GetResourceReferences())
 		description = apiExperiment.GetDescription()
 	case *apiv2beta1.Experiment:
+		uuid = apiExperiment.GetExperimentId()
 		name = apiExperiment.GetDisplayName()
 		namespace = apiExperiment.GetNamespace()
 		description = apiExperiment.GetDescription()
@@ -56,6 +57,7 @@ func toModelExperiment(e interface{}) (*model.Experiment, error) {
 	}
 	// Namespace validation is handled in the server layer as it depends on multi-user mode.
 	exp := &model.Experiment{
+		UUID:         uuid,
 		Name:         name,
 		Description:  description,
 		Namespace:    namespace,
@@ -483,6 +485,29 @@ func toApiPipelineVersion(pv *model.PipelineVersion) *apiv2beta1.PipelineVersion
 		DisplayName:       pv.DisplayName,
 		Description:       string(pv.Description),
 		CreatedAt:         timestamppb.New(time.Unix(pv.CreatedAtInSec, 0)),
+	}
+	if pv.ResourceEnvelope != "" {
+		var envelopeMap map[string]interface{}
+		if err := json.Unmarshal([]byte(pv.ResourceEnvelope), &envelopeMap); err != nil {
+			return &apiv2beta1.PipelineVersion{
+				PipelineId:        pv.PipelineId,
+				PipelineVersionId: pv.UUID,
+				Error: util.ToRpcStatus(
+					util.NewInternalServerError(err, "Failed to parse the pipeline version resource envelope"),
+				),
+			}
+		}
+		resourceEnvelope, err := structpb.NewStruct(envelopeMap)
+		if err != nil {
+			return &apiv2beta1.PipelineVersion{
+				PipelineId:        pv.PipelineId,
+				PipelineVersionId: pv.UUID,
+				Error: util.ToRpcStatus(
+					util.NewInternalServerError(err, "Failed to convert the pipeline version resource envelope"),
+				),
+			}
+		}
+		apiPipelineVersion.ResourceEnvelope = resourceEnvelope
 	}
 
 	// Infer pipeline url
@@ -1645,6 +1670,7 @@ func toModelTask(t interface{}) (*model.Task, error) {
 		apiTaskDetailV2 := t
 		namespace = ""
 		taskId = apiTaskDetailV2.GetTaskId()
+		nodeId = apiTaskDetailV2.GetPodName()
 		pipelineName = ""
 		runId = apiTaskDetailV2.GetRunId()
 		mlmdExecId = fmt.Sprint(apiTaskDetailV2.GetExecutionId())
@@ -1817,6 +1843,7 @@ func toApiPipelineTaskDetail(t *model.Task) *apiv2beta1.PipelineTaskDetail {
 		Outputs:      outputArtifacts,
 		ParentTaskId: t.ParentTaskId,
 		StateHistory: toApiRuntimeStatuses(t.StateHistory),
+		PodName:      t.PodName,
 		ChildTasks:   children,
 	}
 }

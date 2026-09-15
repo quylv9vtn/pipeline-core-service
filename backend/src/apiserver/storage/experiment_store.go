@@ -226,11 +226,14 @@ func (s *ExperimentStore) CreateExperiment(experiment *model.Experiment) (*model
 	// When an experiment has no runs
 	// we default to "1970-01-01T00:00:00Z"
 	newExperiment.LastRunCreatedAtInSec = 0
-	id, err := s.uuid.NewRandom()
-	if err != nil {
-		return nil, util.NewInternalServerError(err, "Failed to create an experiment id")
+	callerProvidedID := newExperiment.UUID != ""
+	if newExperiment.UUID == "" {
+		id, err := s.uuid.NewRandom()
+		if err != nil {
+			return nil, util.NewInternalServerError(err, "Failed to create an experiment id")
+		}
+		newExperiment.UUID = id.String()
 	}
-	newExperiment.UUID = id.String()
 
 	if newExperiment.StorageState == "" || newExperiment.StorageState == model.StorageStateUnspecified {
 		newExperiment.StorageState = model.StorageStateAvailable
@@ -258,6 +261,10 @@ func (s *ExperimentStore) CreateExperiment(experiment *model.Experiment) (*model
 	_, err = s.db.Exec(sql, args...)
 	if err != nil {
 		if s.db.IsDuplicateError(err) {
+			if callerProvidedID {
+				return nil, util.NewAlreadyExistError(
+					"Failed to create a new experiment. The ID or name already exists")
+			}
 			return nil, util.NewAlreadyExistError(
 				"Failed to create a new experiment. The name %v already exists. Please specify a new name", experiment.Name)
 		}

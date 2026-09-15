@@ -49,6 +49,7 @@ var (
 		"pipeline_versions.Description",
 		"pipeline_versions.PipelineSpec",
 		"pipeline_versions.PipelineSpecURI",
+		"pipeline_versions.ResourceEnvelope",
 	}
 
 	// `pipelines`
@@ -76,6 +77,7 @@ var (
 		"pipeline_versions.Description",
 		"pipeline_versions.PipelineSpec",
 		"pipeline_versions.PipelineSpecURI",
+		"pipeline_versions.ResourceEnvelope",
 	}
 )
 
@@ -390,7 +392,7 @@ func (s *PipelineStore) scanJoinedRows(rows *sql.Rows) ([]*model.Pipeline, []*mo
 		var uuid, name, displayName, description string
 		var namespace sql.NullString
 		var status model.PipelineStatus
-		var versionUUID, versionName, versionDisplayName, versionParameters, versionPipelineId, versionCodeSourceUrl, versionStatus, versionDescription, pipelineSpec, pipelineSpecURI sql.NullString
+		var versionUUID, versionName, versionDisplayName, versionParameters, versionPipelineId, versionCodeSourceUrl, versionStatus, versionDescription, pipelineSpec, pipelineSpecURI, resourceEnvelope sql.NullString
 		var createdAtInSec, versionCreatedAtInSec sql.NullInt64
 		if err := rows.Scan(
 			&uuid,
@@ -411,6 +413,7 @@ func (s *PipelineStore) scanJoinedRows(rows *sql.Rows) ([]*model.Pipeline, []*mo
 			&versionDescription,
 			&pipelineSpec,
 			&pipelineSpecURI,
+			&resourceEnvelope,
 		); err != nil {
 			return nil, nil, err
 		}
@@ -429,17 +432,18 @@ func (s *PipelineStore) scanJoinedRows(rows *sql.Rows) ([]*model.Pipeline, []*mo
 		pipelineVersions = append(
 			pipelineVersions,
 			&model.PipelineVersion{
-				UUID:            versionUUID.String,
-				CreatedAtInSec:  versionCreatedAtInSec.Int64,
-				Name:            versionName.String,
-				DisplayName:     versionDisplayName.String,
-				Parameters:      model.LargeText(versionParameters.String),
-				PipelineId:      versionPipelineId.String,
-				Status:          model.PipelineVersionStatus(versionStatus.String),
-				CodeSourceUrl:   versionCodeSourceUrl.String,
-				Description:     model.LargeText(versionDescription.String),
-				PipelineSpec:    model.LargeText(pipelineSpec.String),
-				PipelineSpecURI: model.LargeText(pipelineSpecURI.String),
+				UUID:             versionUUID.String,
+				CreatedAtInSec:   versionCreatedAtInSec.Int64,
+				Name:             versionName.String,
+				DisplayName:      versionDisplayName.String,
+				Parameters:       model.LargeText(versionParameters.String),
+				PipelineId:       versionPipelineId.String,
+				Status:           model.PipelineVersionStatus(versionStatus.String),
+				CodeSourceUrl:    versionCodeSourceUrl.String,
+				Description:      model.LargeText(versionDescription.String),
+				PipelineSpec:     model.LargeText(pipelineSpec.String),
+				PipelineSpecURI:  model.LargeText(pipelineSpecURI.String),
+				ResourceEnvelope: model.LargeText(resourceEnvelope.String),
 			},
 		)
 	}
@@ -537,17 +541,21 @@ func (s *PipelineStore) CreatePipelineAndPipelineVersion(p *model.Pipeline, pv *
 	newPipeline.CreatedAtInSec = s.time.Now().Unix()
 	newPipelineVersion.CreatedAtInSec = s.time.Now().Unix()
 
-	// Set ids
-	pID, err := s.uuid.NewRandom()
-	if err != nil {
-		return nil, nil, util.NewInternalServerError(err, "Failed to create a pipeline UUID")
+	// Preserve client-provided IDs. Generate IDs only when they were omitted.
+	if newPipeline.UUID == "" {
+		pID, err := s.uuid.NewRandom()
+		if err != nil {
+			return nil, nil, util.NewInternalServerError(err, "Failed to create a pipeline UUID")
+		}
+		newPipeline.UUID = pID.String()
 	}
-	pvID, err := s.uuid.NewRandom()
-	if err != nil {
-		return nil, nil, util.NewInternalServerError(err, "Failed to create a pipeline version UUID")
+	if newPipelineVersion.UUID == "" {
+		pvID, err := s.uuid.NewRandom()
+		if err != nil {
+			return nil, nil, util.NewInternalServerError(err, "Failed to create a pipeline version UUID")
+		}
+		newPipelineVersion.UUID = pvID.String()
 	}
-	newPipeline.UUID = pID.String()
-	newPipelineVersion.UUID = pvID.String()
 	newPipelineVersion.PipelineId = newPipeline.UUID
 
 	// Set temporal status. This needs to be updated in a follow-up call.
@@ -576,16 +584,17 @@ func (s *PipelineStore) CreatePipelineAndPipelineVersion(p *model.Pipeline, pv *
 		Insert("pipeline_versions").
 		SetMap(
 			sq.Eq{
-				"UUID":            newPipelineVersion.UUID,
-				"CreatedAtInSec":  newPipelineVersion.CreatedAtInSec,
-				"Name":            newPipelineVersion.Name,
-				"DisplayName":     newPipelineVersion.DisplayName,
-				"PipelineId":      newPipelineVersion.PipelineId,
-				"Status":          string(newPipelineVersion.Status),
-				"CodeSourceUrl":   newPipelineVersion.CodeSourceUrl,
-				"Description":     newPipelineVersion.Description,
-				"PipelineSpec":    newPipelineVersion.PipelineSpec,
-				"PipelineSpecURI": newPipelineVersion.PipelineSpecURI,
+				"UUID":             newPipelineVersion.UUID,
+				"CreatedAtInSec":   newPipelineVersion.CreatedAtInSec,
+				"Name":             newPipelineVersion.Name,
+				"DisplayName":      newPipelineVersion.DisplayName,
+				"PipelineId":       newPipelineVersion.PipelineId,
+				"Status":           string(newPipelineVersion.Status),
+				"CodeSourceUrl":    newPipelineVersion.CodeSourceUrl,
+				"Description":      newPipelineVersion.Description,
+				"PipelineSpec":     newPipelineVersion.PipelineSpec,
+				"PipelineSpecURI":  newPipelineVersion.PipelineSpecURI,
+				"ResourceEnvelope": newPipelineVersion.ResourceEnvelope,
 			},
 		).
 		ToSql()
@@ -613,6 +622,10 @@ func (s *PipelineStore) CreatePipelineAndPipelineVersion(p *model.Pipeline, pv *
 	_, err = tx.Exec(versionSql, versionArgs...)
 	if err != nil {
 		tx.Rollback()
+		if s.db.IsDuplicateError(err) {
+			return nil, nil, util.NewAlreadyExistError(
+				"Failed to create a new pipeline version. The ID or name already exists")
+		}
 		return nil, nil, util.NewInternalServerError(err, "Failed to insert a new pipeline version")
 	}
 
@@ -630,12 +643,14 @@ func (s *PipelineStore) CreatePipeline(p *model.Pipeline) (*model.Pipeline, erro
 	// Set pipeline creation time
 	newPipeline.CreatedAtInSec = s.time.Now().Unix()
 
-	// Set pipeline id
-	id, err := s.uuid.NewRandom()
-	if err != nil {
-		return nil, util.NewInternalServerError(err, "Failed to create a pipeline UUID")
+	// Preserve a client-provided ID. Generate one only when it was omitted.
+	if newPipeline.UUID == "" {
+		id, err := s.uuid.NewRandom()
+		if err != nil {
+			return nil, util.NewInternalServerError(err, "Failed to create a pipeline UUID")
+		}
+		newPipeline.UUID = id.String()
 	}
-	newPipeline.UUID = id.String()
 
 	// Create a query for the KFP DB
 	sql, args, err := sq.
@@ -714,12 +729,14 @@ func NewPipelineStore(db *DB, time util.TimeInterface, uuid util.UUIDGeneratorIn
 func (s *PipelineStore) CreatePipelineVersion(pv *model.PipelineVersion) (*model.PipelineVersion, error) {
 	newPipelineVersion := *pv
 
-	// Set pipeline version id
-	id, err := s.uuid.NewRandom()
-	if err != nil {
-		return nil, util.NewInternalServerError(err, "Failed to generate a pipeline version UUID")
+	// Preserve a client-provided ID. Generate one only when it was omitted.
+	if newPipelineVersion.UUID == "" {
+		id, err := s.uuid.NewRandom()
+		if err != nil {
+			return nil, util.NewInternalServerError(err, "Failed to generate a pipeline version UUID")
+		}
+		newPipelineVersion.UUID = id.String()
 	}
-	newPipelineVersion.UUID = id.String()
 
 	// Set creation time
 	newPipelineVersion.CreatedAtInSec = s.time.Now().Unix()
@@ -729,16 +746,17 @@ func (s *PipelineStore) CreatePipelineVersion(pv *model.PipelineVersion) (*model
 		Insert("pipeline_versions").
 		SetMap(
 			sq.Eq{
-				"UUID":            newPipelineVersion.UUID,
-				"CreatedAtInSec":  newPipelineVersion.CreatedAtInSec,
-				"Name":            newPipelineVersion.Name,
-				"DisplayName":     newPipelineVersion.DisplayName,
-				"PipelineId":      newPipelineVersion.PipelineId,
-				"Status":          string(newPipelineVersion.Status),
-				"CodeSourceUrl":   newPipelineVersion.CodeSourceUrl,
-				"Description":     newPipelineVersion.Description,
-				"PipelineSpec":    newPipelineVersion.PipelineSpec,
-				"PipelineSpecURI": newPipelineVersion.PipelineSpecURI,
+				"UUID":             newPipelineVersion.UUID,
+				"CreatedAtInSec":   newPipelineVersion.CreatedAtInSec,
+				"Name":             newPipelineVersion.Name,
+				"DisplayName":      newPipelineVersion.DisplayName,
+				"PipelineId":       newPipelineVersion.PipelineId,
+				"Status":           string(newPipelineVersion.Status),
+				"CodeSourceUrl":    newPipelineVersion.CodeSourceUrl,
+				"Description":      newPipelineVersion.Description,
+				"PipelineSpec":     newPipelineVersion.PipelineSpec,
+				"PipelineSpecURI":  newPipelineVersion.PipelineSpecURI,
+				"ResourceEnvelope": newPipelineVersion.ResourceEnvelope,
 			},
 		).
 		ToSql()
@@ -875,7 +893,7 @@ func (s *PipelineStore) getPipelineVersionByCol(colName, colVal string, status m
 func (s *PipelineStore) scanPipelineVersionsRows(rows *sql.Rows) ([]*model.PipelineVersion, error) {
 	var pipelineVersions []*model.PipelineVersion
 	for rows.Next() {
-		var uuid, name, displayName, pipelineId, codeSourceUrl, status, description, pipelineSpec, pipelineSpecURI sql.NullString
+		var uuid, name, displayName, pipelineId, codeSourceUrl, status, description, pipelineSpec, pipelineSpecURI, resourceEnvelope sql.NullString
 		var createdAtInSec sql.NullInt64
 		if err := rows.Scan(
 			&uuid,
@@ -888,6 +906,7 @@ func (s *PipelineStore) scanPipelineVersionsRows(rows *sql.Rows) ([]*model.Pipel
 			&description,
 			&pipelineSpec,
 			&pipelineSpecURI,
+			&resourceEnvelope,
 		); err != nil {
 			return nil, err
 		}
@@ -895,16 +914,17 @@ func (s *PipelineStore) scanPipelineVersionsRows(rows *sql.Rows) ([]*model.Pipel
 			pipelineVersions = append(
 				pipelineVersions,
 				&model.PipelineVersion{
-					UUID:            uuid.String,
-					CreatedAtInSec:  createdAtInSec.Int64,
-					Name:            name.String,
-					DisplayName:     displayName.String,
-					PipelineId:      pipelineId.String,
-					CodeSourceUrl:   codeSourceUrl.String,
-					Status:          model.PipelineVersionStatus(status.String),
-					Description:     model.LargeText(description.String),
-					PipelineSpec:    model.LargeText(pipelineSpec.String),
-					PipelineSpecURI: model.LargeText(pipelineSpecURI.String),
+					UUID:             uuid.String,
+					CreatedAtInSec:   createdAtInSec.Int64,
+					Name:             name.String,
+					DisplayName:      displayName.String,
+					PipelineId:       pipelineId.String,
+					CodeSourceUrl:    codeSourceUrl.String,
+					Status:           model.PipelineVersionStatus(status.String),
+					Description:      model.LargeText(description.String),
+					PipelineSpec:     model.LargeText(pipelineSpec.String),
+					PipelineSpecURI:  model.LargeText(pipelineSpecURI.String),
+					ResourceEnvelope: model.LargeText(resourceEnvelope.String),
 				},
 			)
 		}

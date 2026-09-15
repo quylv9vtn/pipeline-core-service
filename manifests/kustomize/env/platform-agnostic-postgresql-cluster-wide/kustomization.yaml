@@ -1,0 +1,109 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ../../base/installs/cluster-wide-postgres
+- ../../base/metadata/overlays/postgres-direct-grpc
+- ../../third-party/argo/installs/cluster
+- ../../third-party/seaweedfs/base
+- ../../third-party/postgresql/base
+- project-control-plane-access-networkpolicies.yaml
+- seaweedfs-project-access-networkpolicy.yaml
+namespace: aiplatform-kubeflow
+patches:
+- target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: ml-pipeline
+  patch: |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: ml-pipeline
+    spec:
+      template:
+        spec:
+          containers:
+          - name: ml-pipeline-api-server
+            env:
+            - name: OBJECTSTORECONFIG_HOST
+              value: seaweedfs
+- target:
+    group: rbac.authorization.k8s.io
+    version: v1
+    kind: ClusterRoleBinding
+    name: argo-binding
+  patch: |-
+    - op: replace
+      path: /subjects/0/namespace
+      value: aiplatform-kubeflow
+- target:
+    group: rbac.authorization.k8s.io
+    version: v1
+    kind: ClusterRoleBinding
+    name: kubeflow-pipelines-cache-binding
+  patch: |-
+    - op: replace
+      path: /subjects/0/namespace
+      value: aiplatform-kubeflow
+- target:
+    group: rbac.authorization.k8s.io
+    version: v1
+    kind: ClusterRoleBinding
+    name: kubeflow-pipelines-metadata-writer-binding
+  patch: |-
+    - op: replace
+      path: /subjects/0/namespace
+      value: aiplatform-kubeflow
+- target:
+    group: rbac.authorization.k8s.io
+    version: v1
+    kind: ClusterRoleBinding
+    name: ml-pipeline
+  patch: |-
+    - op: replace
+      path: /subjects/0/namespace
+      value: aiplatform-kubeflow
+- target:
+    group: rbac.authorization.k8s.io
+    version: v1
+    kind: ClusterRoleBinding
+    name: ml-pipeline-persistenceagent-binding
+  patch: |-
+    - op: replace
+      path: /subjects/0/namespace
+      value: aiplatform-kubeflow
+- target:
+    group: rbac.authorization.k8s.io
+    version: v1
+    kind: ClusterRoleBinding
+    name: ml-pipeline-scheduledworkflow-binding
+  patch: |-
+    - op: replace
+      path: /subjects/0/namespace
+      value: aiplatform-kubeflow
+- target:
+    group: rbac.authorization.k8s.io
+    version: v1
+    kind: ClusterRoleBinding
+    name: ml-pipeline-ui
+  patch: |-
+    - op: replace
+      path: /subjects/0/namespace
+      value: aiplatform-kubeflow
+- target:
+    group: rbac.authorization.k8s.io
+    version: v1
+    kind: ClusterRoleBinding
+    name: ml-pipeline-viewer-crd-binding
+  patch: |-
+    - op: replace
+      path: /subjects/0/namespace
+      value: aiplatform-kubeflow
+images:
+  newName: harbor-local.aiplatformdev.freeddns.org/ai-platform/pipeline/kfp-apiserver
+  newTag: 20260911-namespace-quota-v2
+labels:
+- includeSelectors: true
+  pairs:
+    application-crd-id: kubeflow-pipelines

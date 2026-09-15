@@ -50,7 +50,7 @@ func NewUploadPipelineVersionOK() *UploadPipelineVersionOK {
 /*
 UploadPipelineVersionOK describes a response with status code 200, with default header values.
 
-UploadPipelineVersionOK upload pipeline version o k
+The created pipeline version.
 */
 type UploadPipelineVersionOK struct {
 	Payload *pipeline_upload_model.V2beta1PipelineVersion
@@ -122,7 +122,7 @@ func NewUploadPipelineVersionDefault(code int) *UploadPipelineVersionDefault {
 /*
 UploadPipelineVersionDefault describes a response with status code -1, with default header values.
 
-UploadPipelineVersionDefault upload pipeline version default
+The upload failed.
 */
 type UploadPipelineVersionDefault struct {
 	_statusCode int

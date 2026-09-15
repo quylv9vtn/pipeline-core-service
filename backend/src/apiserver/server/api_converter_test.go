@@ -1208,6 +1208,30 @@ func TestToApiPipeline(t *testing.T) {
 	}
 }
 
+func TestToApiPipelineVersionIncludesResourceEnvelope(t *testing.T) {
+	pipelineVersion := &model.PipelineVersion{
+		UUID:             "version-1",
+		PipelineId:       "pipeline-1",
+		Name:             "version-1",
+		DisplayName:      "Version 1",
+		CreatedAtInSec:   1,
+		PipelineSpec:     "{}",
+		ResourceEnvelope: `{"requests":{"cpu":"3","memory":"3Gi","nvidia.com/gpu":"2"},"limits":{"nvidia.com/gpu":"2"},"gpus":[{"gpu_model":"NVIDIA_A100_80GB","gpu_count":"2"}],"calculation":"EXACT","calculator_version":"v2"}`,
+	}
+
+	apiPipelineVersion := toApiPipelineVersion(pipelineVersion)
+	require.Nil(t, apiPipelineVersion.GetError())
+	require.NotNil(t, apiPipelineVersion.GetResourceEnvelope())
+	assert.Equal(t, "EXACT", apiPipelineVersion.GetResourceEnvelope().GetFields()["calculation"].GetStringValue())
+	requests := apiPipelineVersion.GetResourceEnvelope().GetFields()["requests"].GetStructValue().GetFields()
+	assert.Equal(t, "3", requests["cpu"].GetStringValue())
+	assert.Equal(t, "3Gi", requests["memory"].GetStringValue())
+	gpus := apiPipelineVersion.GetResourceEnvelope().GetFields()["gpus"].GetListValue().GetValues()
+	require.Len(t, gpus, 1)
+	assert.Equal(t, "NVIDIA_A100_80GB", gpus[0].GetStructValue().GetFields()["gpu_model"].GetStringValue())
+	assert.Equal(t, "2", gpus[0].GetStructValue().GetFields()["gpu_count"].GetStringValue())
+}
+
 func TestToApiPipelines(t *testing.T) {
 	modelPipelines := []*model.Pipeline{
 		{

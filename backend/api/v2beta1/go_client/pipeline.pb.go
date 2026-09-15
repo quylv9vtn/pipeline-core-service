@@ -173,6 +173,10 @@ type PipelineVersion struct {
 	CodeSourceUrl string `protobuf:"bytes,9,opt,name=code_source_url,json=codeSourceUrl,proto3" json:"code_source_url,omitempty"`
 	// Output. The pipeline spec for the pipeline version.
 	PipelineSpec *structpb.Struct `protobuf:"bytes,7,opt,name=pipeline_spec,json=pipelineSpec,proto3" json:"pipeline_spec,omitempty"`
+	// Output. Peak Kubernetes resource requests and limits calculated from the
+	// immutable pipeline version. The calculation field is EXACT, UPPER_BOUND,
+	// or UNKNOWN; warnings explain conservative or unresolved cases.
+	ResourceEnvelope *structpb.Struct `protobuf:"bytes,11,opt,name=resource_envelope,json=resourceEnvelope,proto3" json:"resource_envelope,omitempty"`
 	// In case any error happens retrieving a pipeline version field, only
 	// pipeline ID, pipeline version ID, and the error message are returned.
 	// Client has the flexibility of choosing how to handle the error.
@@ -271,6 +275,13 @@ func (x *PipelineVersion) GetCodeSourceUrl() string {
 func (x *PipelineVersion) GetPipelineSpec() *structpb.Struct {
 	if x != nil {
 		return x.PipelineSpec
+	}
+	return nil
+}
+
+func (x *PipelineVersion) GetResourceEnvelope() *structpb.Struct {
+	if x != nil {
+		return x.ResourceEnvelope
 	}
 	return nil
 }
@@ -732,6 +743,60 @@ func (x *CreatePipelineAndVersionRequest) GetPipelineVersion() *PipelineVersion 
 	return nil
 }
 
+type CreatePipelineAndVersionResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The newly created parent pipeline.
+	Pipeline *Pipeline `protobuf:"bytes,1,opt,name=pipeline,proto3" json:"pipeline,omitempty"`
+	// The newly created initial pipeline version containing the executable spec.
+	PipelineVersion *PipelineVersion `protobuf:"bytes,2,opt,name=pipeline_version,json=pipelineVersion,proto3" json:"pipeline_version,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *CreatePipelineAndVersionResponse) Reset() {
+	*x = CreatePipelineAndVersionResponse{}
+	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreatePipelineAndVersionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreatePipelineAndVersionResponse) ProtoMessage() {}
+
+func (x *CreatePipelineAndVersionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreatePipelineAndVersionResponse.ProtoReflect.Descriptor instead.
+func (*CreatePipelineAndVersionResponse) Descriptor() ([]byte, []int) {
+	return file_backend_api_v2beta1_pipeline_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *CreatePipelineAndVersionResponse) GetPipeline() *Pipeline {
+	if x != nil {
+		return x.Pipeline
+	}
+	return nil
+}
+
+func (x *CreatePipelineAndVersionResponse) GetPipelineVersion() *PipelineVersion {
+	if x != nil {
+		return x.PipelineVersion
+	}
+	return nil
+}
+
 type CreatePipelineVersionRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Required input. ID of the parent pipeline.
@@ -744,7 +809,7 @@ type CreatePipelineVersionRequest struct {
 
 func (x *CreatePipelineVersionRequest) Reset() {
 	*x = CreatePipelineVersionRequest{}
-	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[10]
+	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -756,7 +821,7 @@ func (x *CreatePipelineVersionRequest) String() string {
 func (*CreatePipelineVersionRequest) ProtoMessage() {}
 
 func (x *CreatePipelineVersionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[10]
+	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -769,7 +834,7 @@ func (x *CreatePipelineVersionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatePipelineVersionRequest.ProtoReflect.Descriptor instead.
 func (*CreatePipelineVersionRequest) Descriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_pipeline_proto_rawDescGZIP(), []int{10}
+	return file_backend_api_v2beta1_pipeline_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *CreatePipelineVersionRequest) GetPipelineId() string {
@@ -798,7 +863,7 @@ type GetPipelineVersionRequest struct {
 
 func (x *GetPipelineVersionRequest) Reset() {
 	*x = GetPipelineVersionRequest{}
-	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[11]
+	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -810,7 +875,7 @@ func (x *GetPipelineVersionRequest) String() string {
 func (*GetPipelineVersionRequest) ProtoMessage() {}
 
 func (x *GetPipelineVersionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[11]
+	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -823,7 +888,7 @@ func (x *GetPipelineVersionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPipelineVersionRequest.ProtoReflect.Descriptor instead.
 func (*GetPipelineVersionRequest) Descriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_pipeline_proto_rawDescGZIP(), []int{11}
+	return file_backend_api_v2beta1_pipeline_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetPipelineVersionRequest) GetPipelineId() string {
@@ -862,7 +927,7 @@ type ListPipelineVersionsRequest struct {
 
 func (x *ListPipelineVersionsRequest) Reset() {
 	*x = ListPipelineVersionsRequest{}
-	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[12]
+	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -874,7 +939,7 @@ func (x *ListPipelineVersionsRequest) String() string {
 func (*ListPipelineVersionsRequest) ProtoMessage() {}
 
 func (x *ListPipelineVersionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[12]
+	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -887,7 +952,7 @@ func (x *ListPipelineVersionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPipelineVersionsRequest.ProtoReflect.Descriptor instead.
 func (*ListPipelineVersionsRequest) Descriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_pipeline_proto_rawDescGZIP(), []int{12}
+	return file_backend_api_v2beta1_pipeline_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListPipelineVersionsRequest) GetPipelineId() string {
@@ -939,7 +1004,7 @@ type ListPipelineVersionsResponse struct {
 
 func (x *ListPipelineVersionsResponse) Reset() {
 	*x = ListPipelineVersionsResponse{}
-	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[13]
+	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -951,7 +1016,7 @@ func (x *ListPipelineVersionsResponse) String() string {
 func (*ListPipelineVersionsResponse) ProtoMessage() {}
 
 func (x *ListPipelineVersionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[13]
+	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -964,7 +1029,7 @@ func (x *ListPipelineVersionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPipelineVersionsResponse.ProtoReflect.Descriptor instead.
 func (*ListPipelineVersionsResponse) Descriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_pipeline_proto_rawDescGZIP(), []int{13}
+	return file_backend_api_v2beta1_pipeline_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListPipelineVersionsResponse) GetPipelineVersions() []*PipelineVersion {
@@ -1000,7 +1065,7 @@ type DeletePipelineVersionRequest struct {
 
 func (x *DeletePipelineVersionRequest) Reset() {
 	*x = DeletePipelineVersionRequest{}
-	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[14]
+	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1012,7 +1077,7 @@ func (x *DeletePipelineVersionRequest) String() string {
 func (*DeletePipelineVersionRequest) ProtoMessage() {}
 
 func (x *DeletePipelineVersionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[14]
+	mi := &file_backend_api_v2beta1_pipeline_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1025,7 +1090,7 @@ func (x *DeletePipelineVersionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePipelineVersionRequest.ProtoReflect.Descriptor instead.
 func (*DeletePipelineVersionRequest) Descriptor() ([]byte, []int) {
-	return file_backend_api_v2beta1_pipeline_proto_rawDescGZIP(), []int{14}
+	return file_backend_api_v2beta1_pipeline_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *DeletePipelineVersionRequest) GetPipelineId() string {
@@ -1056,7 +1121,7 @@ const file_backend_api_v2beta1_pipeline_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x1c\n" +
 	"\tnamespace\x18\x05 \x01(\tR\tnamespace\x12(\n" +
-	"\x05error\x18\x06 \x01(\v2\x12.google.rpc.StatusR\x05error\"\xd4\x03\n" +
+	"\x05error\x18\x06 \x01(\v2\x12.google.rpc.StatusR\x05error\"\x9a\x04\n" +
 	"\x0fPipelineVersion\x12\x1f\n" +
 	"\vpipeline_id\x18\x01 \x01(\tR\n" +
 	"pipelineId\x12.\n" +
@@ -1070,7 +1135,8 @@ const file_backend_api_v2beta1_pipeline_proto_rawDesc = "" +
 	"\vpackage_url\x18\x06 \x01(\v2+.kubeflow.pipelines.backend.api.v2beta1.UrlR\n" +
 	"packageUrl\x12&\n" +
 	"\x0fcode_source_url\x18\t \x01(\tR\rcodeSourceUrl\x12<\n" +
-	"\rpipeline_spec\x18\a \x01(\v2\x17.google.protobuf.StructR\fpipelineSpec\x12(\n" +
+	"\rpipeline_spec\x18\a \x01(\v2\x17.google.protobuf.StructR\fpipelineSpec\x12D\n" +
+	"\x11resource_envelope\x18\v \x01(\v2\x17.google.protobuf.StructR\x10resourceEnvelope\x12(\n" +
 	"\x05error\x18\b \x01(\v2\x12.google.rpc.StatusR\x05error\"(\n" +
 	"\x03Url\x12!\n" +
 	"\fpipeline_url\x18\x01 \x01(\tR\vpipelineUrl\"e\n" +
@@ -1100,6 +1166,9 @@ const file_backend_api_v2beta1_pipeline_proto_rawDesc = "" +
 	"\acascade\x18\x02 \x01(\bR\acascade\"\xd3\x01\n" +
 	"\x1fCreatePipelineAndVersionRequest\x12L\n" +
 	"\bpipeline\x18\x01 \x01(\v20.kubeflow.pipelines.backend.api.v2beta1.PipelineR\bpipeline\x12b\n" +
+	"\x10pipeline_version\x18\x02 \x01(\v27.kubeflow.pipelines.backend.api.v2beta1.PipelineVersionR\x0fpipelineVersion\"\xd4\x01\n" +
+	" CreatePipelineAndVersionResponse\x12L\n" +
+	"\bpipeline\x18\x01 \x01(\v20.kubeflow.pipelines.backend.api.v2beta1.PipelineR\bpipeline\x12b\n" +
 	"\x10pipeline_version\x18\x02 \x01(\v27.kubeflow.pipelines.backend.api.v2beta1.PipelineVersionR\x0fpipelineVersion\"\xa3\x01\n" +
 	"\x1cCreatePipelineVersionRequest\x12\x1f\n" +
 	"\vpipeline_id\x18\x01 \x01(\tR\n" +
@@ -1125,14 +1194,14 @@ const file_backend_api_v2beta1_pipeline_proto_rawDesc = "" +
 	"\x1cDeletePipelineVersionRequest\x12\x1f\n" +
 	"\vpipeline_id\x18\x01 \x01(\tR\n" +
 	"pipelineId\x12.\n" +
-	"\x13pipeline_version_id\x18\x02 \x01(\tR\x11pipelineVersionId2\x97\x0f\n" +
+	"\x13pipeline_version_id\x18\x02 \x01(\tR\x11pipelineVersionId2\xaf\x0f\n" +
 	"\x0fPipelineService\x12\xac\x01\n" +
 	"\x0eCreatePipeline\x12=.kubeflow.pipelines.backend.api.v2beta1.CreatePipelineRequest\x1a0.kubeflow.pipelines.backend.api.v2beta1.Pipeline\")\x82\xd3\xe4\x93\x02#:\bpipeline\"\x17/apis/v2beta1/pipelines\x12\xaa\x01\n" +
 	"\vGetPipeline\x12:.kubeflow.pipelines.backend.api.v2beta1.GetPipelineRequest\x1a0.kubeflow.pipelines.backend.api.v2beta1.Pipeline\"-\x82\xd3\xe4\x93\x02'\x12%/apis/v2beta1/pipelines/{pipeline_id}\x12\xb5\x01\n" +
 	"\x11GetPipelineByName\x12@.kubeflow.pipelines.backend.api.v2beta1.GetPipelineByNameRequest\x1a0.kubeflow.pipelines.backend.api.v2beta1.Pipeline\",\x82\xd3\xe4\x93\x02&\x12$/apis/v2beta1/pipelines/names/{name}\x12\xad\x01\n" +
 	"\rListPipelines\x12<.kubeflow.pipelines.backend.api.v2beta1.ListPipelinesRequest\x1a=.kubeflow.pipelines.backend.api.v2beta1.ListPipelinesResponse\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/apis/v2beta1/pipelines\x12\x96\x01\n" +
-	"\x0eDeletePipeline\x12=.kubeflow.pipelines.backend.api.v2beta1.DeletePipelineRequest\x1a\x16.google.protobuf.Empty\"-\x82\xd3\xe4\x93\x02'*%/apis/v2beta1/pipelines/{pipeline_id}\x12\xc0\x01\n" +
-	"\x18CreatePipelineAndVersion\x12G.kubeflow.pipelines.backend.api.v2beta1.CreatePipelineAndVersionRequest\x1a0.kubeflow.pipelines.backend.api.v2beta1.Pipeline\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/apis/v2beta1/pipelines/create\x12\xe0\x01\n" +
+	"\x0eDeletePipeline\x12=.kubeflow.pipelines.backend.api.v2beta1.DeletePipelineRequest\x1a\x16.google.protobuf.Empty\"-\x82\xd3\xe4\x93\x02'*%/apis/v2beta1/pipelines/{pipeline_id}\x12\xd8\x01\n" +
+	"\x18CreatePipelineAndVersion\x12G.kubeflow.pipelines.backend.api.v2beta1.CreatePipelineAndVersionRequest\x1aH.kubeflow.pipelines.backend.api.v2beta1.CreatePipelineAndVersionResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/apis/v2beta1/pipelines/create\x12\xe0\x01\n" +
 	"\x15CreatePipelineVersion\x12D.kubeflow.pipelines.backend.api.v2beta1.CreatePipelineVersionRequest\x1a7.kubeflow.pipelines.backend.api.v2beta1.PipelineVersion\"H\x82\xd3\xe4\x93\x02B:\x10pipeline_version\"./apis/v2beta1/pipelines/{pipeline_id}/versions\x12\xde\x01\n" +
 	"\x12GetPipelineVersion\x12A.kubeflow.pipelines.backend.api.v2beta1.GetPipelineVersionRequest\x1a7.kubeflow.pipelines.backend.api.v2beta1.PipelineVersion\"L\x82\xd3\xe4\x93\x02F\x12D/apis/v2beta1/pipelines/{pipeline_id}/versions/{pipeline_version_id}\x12\xd9\x01\n" +
 	"\x14ListPipelineVersions\x12C.kubeflow.pipelines.backend.api.v2beta1.ListPipelineVersionsRequest\x1aD.kubeflow.pipelines.backend.api.v2beta1.ListPipelineVersionsResponse\"6\x82\xd3\xe4\x93\x020\x12./apis/v2beta1/pipelines/{pipeline_id}/versions\x12\xc3\x01\n" +
@@ -1157,66 +1226,70 @@ func file_backend_api_v2beta1_pipeline_proto_rawDescGZIP() []byte {
 	return file_backend_api_v2beta1_pipeline_proto_rawDescData
 }
 
-var file_backend_api_v2beta1_pipeline_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_backend_api_v2beta1_pipeline_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_backend_api_v2beta1_pipeline_proto_goTypes = []any{
-	(*Pipeline)(nil),                        // 0: kubeflow.pipelines.backend.api.v2beta1.Pipeline
-	(*PipelineVersion)(nil),                 // 1: kubeflow.pipelines.backend.api.v2beta1.PipelineVersion
-	(*Url)(nil),                             // 2: kubeflow.pipelines.backend.api.v2beta1.Url
-	(*CreatePipelineRequest)(nil),           // 3: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineRequest
-	(*GetPipelineRequest)(nil),              // 4: kubeflow.pipelines.backend.api.v2beta1.GetPipelineRequest
-	(*ListPipelinesRequest)(nil),            // 5: kubeflow.pipelines.backend.api.v2beta1.ListPipelinesRequest
-	(*ListPipelinesResponse)(nil),           // 6: kubeflow.pipelines.backend.api.v2beta1.ListPipelinesResponse
-	(*GetPipelineByNameRequest)(nil),        // 7: kubeflow.pipelines.backend.api.v2beta1.GetPipelineByNameRequest
-	(*DeletePipelineRequest)(nil),           // 8: kubeflow.pipelines.backend.api.v2beta1.DeletePipelineRequest
-	(*CreatePipelineAndVersionRequest)(nil), // 9: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineAndVersionRequest
-	(*CreatePipelineVersionRequest)(nil),    // 10: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineVersionRequest
-	(*GetPipelineVersionRequest)(nil),       // 11: kubeflow.pipelines.backend.api.v2beta1.GetPipelineVersionRequest
-	(*ListPipelineVersionsRequest)(nil),     // 12: kubeflow.pipelines.backend.api.v2beta1.ListPipelineVersionsRequest
-	(*ListPipelineVersionsResponse)(nil),    // 13: kubeflow.pipelines.backend.api.v2beta1.ListPipelineVersionsResponse
-	(*DeletePipelineVersionRequest)(nil),    // 14: kubeflow.pipelines.backend.api.v2beta1.DeletePipelineVersionRequest
-	(*timestamppb.Timestamp)(nil),           // 15: google.protobuf.Timestamp
-	(*status.Status)(nil),                   // 16: google.rpc.Status
-	(*structpb.Struct)(nil),                 // 17: google.protobuf.Struct
-	(*emptypb.Empty)(nil),                   // 18: google.protobuf.Empty
+	(*Pipeline)(nil),                         // 0: kubeflow.pipelines.backend.api.v2beta1.Pipeline
+	(*PipelineVersion)(nil),                  // 1: kubeflow.pipelines.backend.api.v2beta1.PipelineVersion
+	(*Url)(nil),                              // 2: kubeflow.pipelines.backend.api.v2beta1.Url
+	(*CreatePipelineRequest)(nil),            // 3: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineRequest
+	(*GetPipelineRequest)(nil),               // 4: kubeflow.pipelines.backend.api.v2beta1.GetPipelineRequest
+	(*ListPipelinesRequest)(nil),             // 5: kubeflow.pipelines.backend.api.v2beta1.ListPipelinesRequest
+	(*ListPipelinesResponse)(nil),            // 6: kubeflow.pipelines.backend.api.v2beta1.ListPipelinesResponse
+	(*GetPipelineByNameRequest)(nil),         // 7: kubeflow.pipelines.backend.api.v2beta1.GetPipelineByNameRequest
+	(*DeletePipelineRequest)(nil),            // 8: kubeflow.pipelines.backend.api.v2beta1.DeletePipelineRequest
+	(*CreatePipelineAndVersionRequest)(nil),  // 9: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineAndVersionRequest
+	(*CreatePipelineAndVersionResponse)(nil), // 10: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineAndVersionResponse
+	(*CreatePipelineVersionRequest)(nil),     // 11: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineVersionRequest
+	(*GetPipelineVersionRequest)(nil),        // 12: kubeflow.pipelines.backend.api.v2beta1.GetPipelineVersionRequest
+	(*ListPipelineVersionsRequest)(nil),      // 13: kubeflow.pipelines.backend.api.v2beta1.ListPipelineVersionsRequest
+	(*ListPipelineVersionsResponse)(nil),     // 14: kubeflow.pipelines.backend.api.v2beta1.ListPipelineVersionsResponse
+	(*DeletePipelineVersionRequest)(nil),     // 15: kubeflow.pipelines.backend.api.v2beta1.DeletePipelineVersionRequest
+	(*timestamppb.Timestamp)(nil),            // 16: google.protobuf.Timestamp
+	(*status.Status)(nil),                    // 17: google.rpc.Status
+	(*structpb.Struct)(nil),                  // 18: google.protobuf.Struct
+	(*emptypb.Empty)(nil),                    // 19: google.protobuf.Empty
 }
 var file_backend_api_v2beta1_pipeline_proto_depIdxs = []int32{
-	15, // 0: kubeflow.pipelines.backend.api.v2beta1.Pipeline.created_at:type_name -> google.protobuf.Timestamp
-	16, // 1: kubeflow.pipelines.backend.api.v2beta1.Pipeline.error:type_name -> google.rpc.Status
-	15, // 2: kubeflow.pipelines.backend.api.v2beta1.PipelineVersion.created_at:type_name -> google.protobuf.Timestamp
+	16, // 0: kubeflow.pipelines.backend.api.v2beta1.Pipeline.created_at:type_name -> google.protobuf.Timestamp
+	17, // 1: kubeflow.pipelines.backend.api.v2beta1.Pipeline.error:type_name -> google.rpc.Status
+	16, // 2: kubeflow.pipelines.backend.api.v2beta1.PipelineVersion.created_at:type_name -> google.protobuf.Timestamp
 	2,  // 3: kubeflow.pipelines.backend.api.v2beta1.PipelineVersion.package_url:type_name -> kubeflow.pipelines.backend.api.v2beta1.Url
-	17, // 4: kubeflow.pipelines.backend.api.v2beta1.PipelineVersion.pipeline_spec:type_name -> google.protobuf.Struct
-	16, // 5: kubeflow.pipelines.backend.api.v2beta1.PipelineVersion.error:type_name -> google.rpc.Status
-	0,  // 6: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineRequest.pipeline:type_name -> kubeflow.pipelines.backend.api.v2beta1.Pipeline
-	0,  // 7: kubeflow.pipelines.backend.api.v2beta1.ListPipelinesResponse.pipelines:type_name -> kubeflow.pipelines.backend.api.v2beta1.Pipeline
-	0,  // 8: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineAndVersionRequest.pipeline:type_name -> kubeflow.pipelines.backend.api.v2beta1.Pipeline
-	1,  // 9: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineAndVersionRequest.pipeline_version:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineVersion
-	1,  // 10: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineVersionRequest.pipeline_version:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineVersion
-	1,  // 11: kubeflow.pipelines.backend.api.v2beta1.ListPipelineVersionsResponse.pipeline_versions:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineVersion
-	3,  // 12: kubeflow.pipelines.backend.api.v2beta1.PipelineService.CreatePipeline:input_type -> kubeflow.pipelines.backend.api.v2beta1.CreatePipelineRequest
-	4,  // 13: kubeflow.pipelines.backend.api.v2beta1.PipelineService.GetPipeline:input_type -> kubeflow.pipelines.backend.api.v2beta1.GetPipelineRequest
-	7,  // 14: kubeflow.pipelines.backend.api.v2beta1.PipelineService.GetPipelineByName:input_type -> kubeflow.pipelines.backend.api.v2beta1.GetPipelineByNameRequest
-	5,  // 15: kubeflow.pipelines.backend.api.v2beta1.PipelineService.ListPipelines:input_type -> kubeflow.pipelines.backend.api.v2beta1.ListPipelinesRequest
-	8,  // 16: kubeflow.pipelines.backend.api.v2beta1.PipelineService.DeletePipeline:input_type -> kubeflow.pipelines.backend.api.v2beta1.DeletePipelineRequest
-	9,  // 17: kubeflow.pipelines.backend.api.v2beta1.PipelineService.CreatePipelineAndVersion:input_type -> kubeflow.pipelines.backend.api.v2beta1.CreatePipelineAndVersionRequest
-	10, // 18: kubeflow.pipelines.backend.api.v2beta1.PipelineService.CreatePipelineVersion:input_type -> kubeflow.pipelines.backend.api.v2beta1.CreatePipelineVersionRequest
-	11, // 19: kubeflow.pipelines.backend.api.v2beta1.PipelineService.GetPipelineVersion:input_type -> kubeflow.pipelines.backend.api.v2beta1.GetPipelineVersionRequest
-	12, // 20: kubeflow.pipelines.backend.api.v2beta1.PipelineService.ListPipelineVersions:input_type -> kubeflow.pipelines.backend.api.v2beta1.ListPipelineVersionsRequest
-	14, // 21: kubeflow.pipelines.backend.api.v2beta1.PipelineService.DeletePipelineVersion:input_type -> kubeflow.pipelines.backend.api.v2beta1.DeletePipelineVersionRequest
-	0,  // 22: kubeflow.pipelines.backend.api.v2beta1.PipelineService.CreatePipeline:output_type -> kubeflow.pipelines.backend.api.v2beta1.Pipeline
-	0,  // 23: kubeflow.pipelines.backend.api.v2beta1.PipelineService.GetPipeline:output_type -> kubeflow.pipelines.backend.api.v2beta1.Pipeline
-	0,  // 24: kubeflow.pipelines.backend.api.v2beta1.PipelineService.GetPipelineByName:output_type -> kubeflow.pipelines.backend.api.v2beta1.Pipeline
-	6,  // 25: kubeflow.pipelines.backend.api.v2beta1.PipelineService.ListPipelines:output_type -> kubeflow.pipelines.backend.api.v2beta1.ListPipelinesResponse
-	18, // 26: kubeflow.pipelines.backend.api.v2beta1.PipelineService.DeletePipeline:output_type -> google.protobuf.Empty
-	0,  // 27: kubeflow.pipelines.backend.api.v2beta1.PipelineService.CreatePipelineAndVersion:output_type -> kubeflow.pipelines.backend.api.v2beta1.Pipeline
-	1,  // 28: kubeflow.pipelines.backend.api.v2beta1.PipelineService.CreatePipelineVersion:output_type -> kubeflow.pipelines.backend.api.v2beta1.PipelineVersion
-	1,  // 29: kubeflow.pipelines.backend.api.v2beta1.PipelineService.GetPipelineVersion:output_type -> kubeflow.pipelines.backend.api.v2beta1.PipelineVersion
-	13, // 30: kubeflow.pipelines.backend.api.v2beta1.PipelineService.ListPipelineVersions:output_type -> kubeflow.pipelines.backend.api.v2beta1.ListPipelineVersionsResponse
-	18, // 31: kubeflow.pipelines.backend.api.v2beta1.PipelineService.DeletePipelineVersion:output_type -> google.protobuf.Empty
-	22, // [22:32] is the sub-list for method output_type
-	12, // [12:22] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	18, // 4: kubeflow.pipelines.backend.api.v2beta1.PipelineVersion.pipeline_spec:type_name -> google.protobuf.Struct
+	18, // 5: kubeflow.pipelines.backend.api.v2beta1.PipelineVersion.resource_envelope:type_name -> google.protobuf.Struct
+	17, // 6: kubeflow.pipelines.backend.api.v2beta1.PipelineVersion.error:type_name -> google.rpc.Status
+	0,  // 7: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineRequest.pipeline:type_name -> kubeflow.pipelines.backend.api.v2beta1.Pipeline
+	0,  // 8: kubeflow.pipelines.backend.api.v2beta1.ListPipelinesResponse.pipelines:type_name -> kubeflow.pipelines.backend.api.v2beta1.Pipeline
+	0,  // 9: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineAndVersionRequest.pipeline:type_name -> kubeflow.pipelines.backend.api.v2beta1.Pipeline
+	1,  // 10: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineAndVersionRequest.pipeline_version:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineVersion
+	0,  // 11: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineAndVersionResponse.pipeline:type_name -> kubeflow.pipelines.backend.api.v2beta1.Pipeline
+	1,  // 12: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineAndVersionResponse.pipeline_version:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineVersion
+	1,  // 13: kubeflow.pipelines.backend.api.v2beta1.CreatePipelineVersionRequest.pipeline_version:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineVersion
+	1,  // 14: kubeflow.pipelines.backend.api.v2beta1.ListPipelineVersionsResponse.pipeline_versions:type_name -> kubeflow.pipelines.backend.api.v2beta1.PipelineVersion
+	3,  // 15: kubeflow.pipelines.backend.api.v2beta1.PipelineService.CreatePipeline:input_type -> kubeflow.pipelines.backend.api.v2beta1.CreatePipelineRequest
+	4,  // 16: kubeflow.pipelines.backend.api.v2beta1.PipelineService.GetPipeline:input_type -> kubeflow.pipelines.backend.api.v2beta1.GetPipelineRequest
+	7,  // 17: kubeflow.pipelines.backend.api.v2beta1.PipelineService.GetPipelineByName:input_type -> kubeflow.pipelines.backend.api.v2beta1.GetPipelineByNameRequest
+	5,  // 18: kubeflow.pipelines.backend.api.v2beta1.PipelineService.ListPipelines:input_type -> kubeflow.pipelines.backend.api.v2beta1.ListPipelinesRequest
+	8,  // 19: kubeflow.pipelines.backend.api.v2beta1.PipelineService.DeletePipeline:input_type -> kubeflow.pipelines.backend.api.v2beta1.DeletePipelineRequest
+	9,  // 20: kubeflow.pipelines.backend.api.v2beta1.PipelineService.CreatePipelineAndVersion:input_type -> kubeflow.pipelines.backend.api.v2beta1.CreatePipelineAndVersionRequest
+	11, // 21: kubeflow.pipelines.backend.api.v2beta1.PipelineService.CreatePipelineVersion:input_type -> kubeflow.pipelines.backend.api.v2beta1.CreatePipelineVersionRequest
+	12, // 22: kubeflow.pipelines.backend.api.v2beta1.PipelineService.GetPipelineVersion:input_type -> kubeflow.pipelines.backend.api.v2beta1.GetPipelineVersionRequest
+	13, // 23: kubeflow.pipelines.backend.api.v2beta1.PipelineService.ListPipelineVersions:input_type -> kubeflow.pipelines.backend.api.v2beta1.ListPipelineVersionsRequest
+	15, // 24: kubeflow.pipelines.backend.api.v2beta1.PipelineService.DeletePipelineVersion:input_type -> kubeflow.pipelines.backend.api.v2beta1.DeletePipelineVersionRequest
+	0,  // 25: kubeflow.pipelines.backend.api.v2beta1.PipelineService.CreatePipeline:output_type -> kubeflow.pipelines.backend.api.v2beta1.Pipeline
+	0,  // 26: kubeflow.pipelines.backend.api.v2beta1.PipelineService.GetPipeline:output_type -> kubeflow.pipelines.backend.api.v2beta1.Pipeline
+	0,  // 27: kubeflow.pipelines.backend.api.v2beta1.PipelineService.GetPipelineByName:output_type -> kubeflow.pipelines.backend.api.v2beta1.Pipeline
+	6,  // 28: kubeflow.pipelines.backend.api.v2beta1.PipelineService.ListPipelines:output_type -> kubeflow.pipelines.backend.api.v2beta1.ListPipelinesResponse
+	19, // 29: kubeflow.pipelines.backend.api.v2beta1.PipelineService.DeletePipeline:output_type -> google.protobuf.Empty
+	10, // 30: kubeflow.pipelines.backend.api.v2beta1.PipelineService.CreatePipelineAndVersion:output_type -> kubeflow.pipelines.backend.api.v2beta1.CreatePipelineAndVersionResponse
+	1,  // 31: kubeflow.pipelines.backend.api.v2beta1.PipelineService.CreatePipelineVersion:output_type -> kubeflow.pipelines.backend.api.v2beta1.PipelineVersion
+	1,  // 32: kubeflow.pipelines.backend.api.v2beta1.PipelineService.GetPipelineVersion:output_type -> kubeflow.pipelines.backend.api.v2beta1.PipelineVersion
+	14, // 33: kubeflow.pipelines.backend.api.v2beta1.PipelineService.ListPipelineVersions:output_type -> kubeflow.pipelines.backend.api.v2beta1.ListPipelineVersionsResponse
+	19, // 34: kubeflow.pipelines.backend.api.v2beta1.PipelineService.DeletePipelineVersion:output_type -> google.protobuf.Empty
+	25, // [25:35] is the sub-list for method output_type
+	15, // [15:25] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_backend_api_v2beta1_pipeline_proto_init() }
@@ -1230,7 +1303,7 @@ func file_backend_api_v2beta1_pipeline_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_backend_api_v2beta1_pipeline_proto_rawDesc), len(file_backend_api_v2beta1_pipeline_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   15,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

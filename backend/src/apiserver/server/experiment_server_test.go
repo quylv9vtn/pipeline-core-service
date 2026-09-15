@@ -106,6 +106,66 @@ func TestCreateExperiment(t *testing.T) {
 	assert.Equal(t, expectedExperiment, result)
 }
 
+func TestCreateExperiment_WithCallerProvidedID(t *testing.T) {
+	clientManager := resource.NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	resourceManager := resource.NewResourceManager(clientManager, &resource.ResourceManagerOptions{CollectMetrics: false})
+	server := createExperimentServer(resourceManager)
+	const experimentID = "123e4567-e89b-12d3-a456-426655440010"
+	experiment := &apiV2beta1.Experiment{
+		ExperimentId: experimentID,
+		DisplayName:  "ex-with-custom-id",
+		Description:  "first experiment",
+		Namespace:    "project-a",
+	}
+
+	result, err := server.CreateExperiment(nil, &apiV2beta1.CreateExperimentRequest{Experiment: experiment})
+	assert.NoError(t, err)
+	assert.Equal(t, experimentID, result.ExperimentId)
+	assert.Equal(t, "project-a", result.Namespace)
+}
+
+func TestCreateExperiment_DuplicateCallerProvidedID(t *testing.T) {
+	clientManager := resource.NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	resourceManager := resource.NewResourceManager(clientManager, &resource.ResourceManagerOptions{CollectMetrics: false})
+	server := createExperimentServer(resourceManager)
+	const experimentID = "123e4567-e89b-12d3-a456-426655440010"
+
+	_, err := server.CreateExperiment(nil, &apiV2beta1.CreateExperimentRequest{Experiment: &apiV2beta1.Experiment{
+		ExperimentId: experimentID,
+		DisplayName:  "first",
+	}})
+	assert.NoError(t, err)
+
+	_, err = server.CreateExperiment(nil, &apiV2beta1.CreateExperimentRequest{Experiment: &apiV2beta1.Experiment{
+		ExperimentId: experimentID,
+		DisplayName:  "second",
+	}})
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "The ID or name already exists")
+	}
+}
+
+func TestCreateExperiment_InvalidCallerProvidedID(t *testing.T) {
+	clientManager := resource.NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	resourceManager := resource.NewResourceManager(clientManager, &resource.ResourceManagerOptions{CollectMetrics: false})
+	server := createExperimentServer(resourceManager)
+
+	for _, experimentID := range []string{
+		"not-a-uuid",
+		"123E4567-E89B-12D3-A456-426655440010",
+	} {
+		t.Run(experimentID, func(t *testing.T) {
+			_, err := server.CreateExperiment(nil, &apiV2beta1.CreateExperimentRequest{Experiment: &apiV2beta1.Experiment{
+				ExperimentId: experimentID,
+				DisplayName:  "invalid-id",
+			}})
+			if assert.Error(t, err) {
+				assert.Contains(t, err.Error(), "Experiment ID must be a canonical UUID")
+			}
+		})
+	}
+}
+
 func TestCreateExperimentV1_Failed(t *testing.T) {
 	clientManager := resource.NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
 	resourceManager := resource.NewResourceManager(clientManager, &resource.ResourceManagerOptions{CollectMetrics: false})

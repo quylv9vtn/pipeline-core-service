@@ -192,7 +192,7 @@ func (c *PipelineUploadClientKubernetes) Upload(parameters *params.UploadPipelin
 func (c *PipelineUploadClientKubernetes) UploadPipelineVersion(filePath string, parameters *params.UploadPipelineVersionParams) (*model.V2beta1PipelineVersion,
 	error,
 ) {
-	if parameters.Pipelineid == nil {
+	if parameters.Pipelineid == "" {
 		return nil, util.NewUserError(errors.New("pipelineid is required"),
 			"pipelineid is required",
 			"pipelineid is required")
@@ -226,7 +226,7 @@ func (c *PipelineUploadClientKubernetes) UploadPipelineVersion(filePath string, 
 	var pipeline *k8sapi.Pipeline
 
 	for _, listedPipeline := range pipelineList.Items {
-		if string(listedPipeline.ObjectMeta.UID) == *parameters.Pipelineid {
+		if string(listedPipeline.ObjectMeta.UID) == string(parameters.Pipelineid) {
 			pipeline = &listedPipeline
 			break
 		}
@@ -234,7 +234,7 @@ func (c *PipelineUploadClientKubernetes) UploadPipelineVersion(filePath string, 
 
 	if pipeline == nil {
 		return nil, util.NewUserError(errors.New("pipeline not found"),
-			fmt.Sprintf("Pipeline with id %s not found", *parameters.Pipelineid),
+			fmt.Sprintf("Pipeline with id %s not found", parameters.Pipelineid),
 			"Pipeline not found")
 	}
 

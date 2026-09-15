@@ -46,6 +46,10 @@ type PipelineVersionSpec struct {
 	PlatformSpec *IRSpec `json:"platformSpec,omitempty"`
 
 	PipelineSpecURI string `json:"pipelineSpecURI,omitempty"`
+
+	// ResourceEnvelope is the upload-time peak resource calculation derived
+	// from this immutable pipeline version's IR.
+	ResourceEnvelope string `json:"resourceEnvelope,omitempty"`
 }
 
 // SimplifiedCondition is a metav1.Condition without lastTransitionTime since the database model doesn't have such
@@ -152,13 +156,14 @@ func FromPipelineVersionModel(pipeline model.Pipeline, pipelineVersion model.Pip
 			},
 		},
 		Spec: PipelineVersionSpec{
-			DisplayName:     pipelineVersion.DisplayName,
-			Description:     string(pipelineVersion.Description),
-			PipelineSpec:    pipelineSpec,
-			PlatformSpec:    platformSpec,
-			PipelineName:    pipeline.Name,
-			CodeSourceURL:   pipelineVersion.CodeSourceUrl,
-			PipelineSpecURI: string(pipelineVersion.PipelineSpecURI),
+			DisplayName:      pipelineVersion.DisplayName,
+			Description:      string(pipelineVersion.Description),
+			PipelineSpec:     pipelineSpec,
+			PlatformSpec:     platformSpec,
+			PipelineName:     pipeline.Name,
+			CodeSourceURL:    pipelineVersion.CodeSourceUrl,
+			PipelineSpecURI:  string(pipelineVersion.PipelineSpecURI),
+			ResourceEnvelope: string(pipelineVersion.ResourceEnvelope),
 		},
 	}, nil
 }
@@ -214,17 +219,18 @@ func (p *PipelineVersion) ToModel() (*model.PipelineVersion, error) {
 	}
 
 	return &model.PipelineVersion{
-		UUID:            string(p.UID),
-		CreatedAtInSec:  p.CreationTimestamp.Unix(),
-		Name:            p.Name,
-		DisplayName:     displayName,
-		Parameters:      "",
-		PipelineId:      string(pipelineID),
-		Status:          pipelineVersionStatus,
-		CodeSourceUrl:   p.Spec.CodeSourceURL,
-		Description:     model.LargeText(p.Spec.Description),
-		PipelineSpec:    model.LargeText(v2Spec.Bytes()),
-		PipelineSpecURI: model.LargeText(p.Spec.PipelineSpecURI),
+		UUID:             string(p.UID),
+		CreatedAtInSec:   p.CreationTimestamp.Unix(),
+		Name:             p.Name,
+		DisplayName:      displayName,
+		Parameters:       "",
+		PipelineId:       string(pipelineID),
+		Status:           pipelineVersionStatus,
+		CodeSourceUrl:    p.Spec.CodeSourceURL,
+		Description:      model.LargeText(p.Spec.Description),
+		PipelineSpec:     model.LargeText(v2Spec.Bytes()),
+		PipelineSpecURI:  model.LargeText(p.Spec.PipelineSpecURI),
+		ResourceEnvelope: model.LargeText(p.Spec.ResourceEnvelope),
 	}, nil
 }
 

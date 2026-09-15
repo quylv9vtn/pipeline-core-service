@@ -29,6 +29,7 @@ import (
 	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/client"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/common"
+	"github.com/kubeflow/pipelines/backend/src/apiserver/model"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/resource"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/template"
 	"github.com/kubeflow/pipelines/backend/src/common/util"
@@ -768,6 +769,88 @@ func TestRunServer_CreateRun_SingleUser(t *testing.T) {
 	}
 }
 
+func TestCreateRunInheritsParentPipelineNamespace(t *testing.T) {
+	initEnvVars()
+	clients := resource.NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	defer clients.Close()
+	manager := resource.NewResourceManager(clients, &resource.ResourceManagerOptions{CollectMetrics: false})
+	server := createRunServer(manager)
+
+	pipeline, err := manager.CreatePipeline(&model.Pipeline{
+		UUID:      "11111111-1111-4111-8111-111111111111",
+		Name:      "project-pipeline",
+		Namespace: "project-a",
+	})
+	assert.NoError(t, err)
+	version, err := manager.CreatePipelineVersion(&model.PipelineVersion{
+		UUID:         "22222222-2222-4222-8222-222222222222",
+		Name:         "project-pipeline-v1",
+		PipelineId:   pipeline.UUID,
+		PipelineSpec: model.LargeText(v2SpecHelloWorld),
+	})
+	assert.NoError(t, err)
+	experiment, err := manager.CreateExperiment(&model.Experiment{
+		Name:         "project-experiment",
+		Namespace:    "project-a",
+		StorageState: model.StorageStateAvailable,
+	})
+	assert.NoError(t, err)
+
+	created, err := server.createRun(context.Background(), &model.Run{
+		DisplayName:  "project-run",
+		ExperimentId: experiment.UUID,
+		PipelineSpec: model.PipelineSpec{
+			PipelineId:        pipeline.UUID,
+			PipelineVersionId: version.UUID,
+			RuntimeConfig: model.RuntimeConfig{
+				Parameters: model.LargeText(`{"param1":"world"}`),
+			},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "project-a", created.Namespace)
+	stored, err := manager.GetRun(created.UUID)
+	assert.NoError(t, err)
+	assert.Equal(t, "project-a", stored.Namespace)
+}
+
+func TestCreateRunRejectsExperimentOutsideParentPipelineNamespace(t *testing.T) {
+	initEnvVars()
+	clients := resource.NewFakeClientManagerOrFatal(util.NewFakeTimeForEpoch())
+	defer clients.Close()
+	manager := resource.NewResourceManager(clients, &resource.ResourceManagerOptions{CollectMetrics: false})
+	server := createRunServer(manager)
+
+	pipeline, err := manager.CreatePipeline(&model.Pipeline{
+		UUID:      "11111111-1111-4111-8111-111111111111",
+		Name:      "project-pipeline",
+		Namespace: "project-a",
+	})
+	assert.NoError(t, err)
+	version, err := manager.CreatePipelineVersion(&model.PipelineVersion{
+		UUID:         "22222222-2222-4222-8222-222222222222",
+		Name:         "project-pipeline-v1",
+		PipelineId:   pipeline.UUID,
+		PipelineSpec: model.LargeText(v2SpecHelloWorld),
+	})
+	assert.NoError(t, err)
+	experiment, err := manager.CreateExperiment(&model.Experiment{
+		Name:         "other-experiment",
+		Namespace:    "project-b",
+		StorageState: model.StorageStateAvailable,
+	})
+	assert.NoError(t, err)
+
+	created, err := server.createRun(context.Background(), &model.Run{
+		DisplayName:  "invalid-project-run",
+		ExperimentId: experiment.UUID,
+		PipelineSpec: model.PipelineSpec{PipelineVersionId: version.UUID},
+	})
+	assert.Nil(t, created)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "belongs to namespace 'project-b' instead of 'project-a'")
+}
+
 func TestGetRunV1(t *testing.T) {
 	clients, manager, _, _ := initWithExperimentAndPipelineVersion(t)
 	defer clients.Close()
@@ -1217,6 +1300,68 @@ func TestListRuns(t *testing.T) {
 		"param1": structpb.NewStringValue("world"),
 	}
 	assert.Equal(t, expectedRun, listRunsResponse.Runs[0])
+}
+
+func TestListRunsByRecurringRun(t *testing.T) {
+	initEnvVars()
+	clients := resource.NewFakeClientManagerOrFatalV2()
+	defer clients.Close()
+	manager := resource.NewResourceManager(clients, &resource.ResourceManagerOptions{CollectMetrics: false})
+	jobServer := createJobServer(manager)
+	runServer := createRunServer(manager)
+
+	experiment, err := manager.CreateExperiment(&model.Experiment{
+		Name:         "recurring-run-experiment",
+		Namespace:    "ns1",
+		StorageState: model.StorageStateAvailable,
+	})
+	assert.NoError(t, err)
+	pipelineSpec := &structpb.Struct{}
+	assert.NoError(t, yaml.Unmarshal([]byte(v2SpecHelloWorld), pipelineSpec))
+
+	recurringRun, err := jobServer.CreateRecurringRun(context.Background(), &apiv2beta1.CreateRecurringRunRequest{
+		RecurringRun: &apiv2beta1.RecurringRun{
+			DisplayName:    "recurring-run",
+			ExperimentId:   experiment.UUID,
+			Mode:           apiv2beta1.RecurringRun_ENABLE,
+			MaxConcurrency: 1,
+			Trigger: &apiv2beta1.Trigger{
+				Trigger: &apiv2beta1.Trigger_PeriodicSchedule{
+					PeriodicSchedule: &apiv2beta1.PeriodicSchedule{IntervalSecond: 3600},
+				},
+			},
+			PipelineSource: &apiv2beta1.RecurringRun_PipelineSpec{PipelineSpec: pipelineSpec},
+			RuntimeConfig:  &apiv2beta1.RuntimeConfig{PipelineRoot: "model-pipeline-root"},
+		},
+	})
+	assert.NoError(t, err)
+
+	createdRun, err := runServer.CreateRun(context.Background(), &apiv2beta1.CreateRunRequest{
+		Run: &apiv2beta1.Run{
+			DisplayName:    "run-from-recurring-run",
+			ExperimentId:   experiment.UUID,
+			RecurringRunId: recurringRun.RecurringRunId,
+			PipelineSource: &apiv2beta1.Run_PipelineSpec{PipelineSpec: pipelineSpec},
+			RuntimeConfig:  &apiv2beta1.RuntimeConfig{PipelineRoot: "model-pipeline-root"},
+		},
+	})
+	assert.NoError(t, err)
+
+	response, err := runServer.ListRunsByRecurringRun(context.Background(), &apiv2beta1.ListRunsByRecurringRunRequest{
+		RecurringRunId: recurringRun.RecurringRunId,
+		PageSize:       10,
+		SortBy:         "created_at desc",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, int32(1), response.TotalSize)
+	assert.Len(t, response.Runs, 1)
+	assert.Equal(t, createdRun.RunId, response.Runs[0].RunId)
+	assert.Equal(t, recurringRun.RecurringRunId, response.Runs[0].RecurringRunId)
+
+	_, err = runServer.ListRunsByRecurringRun(context.Background(), &apiv2beta1.ListRunsByRecurringRunRequest{
+		RecurringRunId: "00000000-0000-0000-0000-000000000000",
+	})
+	AssertUserError(t, err, codes.NotFound)
 }
 
 func TestReportRunMetricsV1_RunNotFound(t *testing.T) {

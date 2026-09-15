@@ -86,7 +86,9 @@ type ClientService interface {
 }
 
 /*
-UploadPipeline upload pipeline API
+UploadPipeline uploads a pipeline and its initial version
+
+Creates a parent pipeline and an initial executable pipeline version from a compiled pipeline package.
 */
 func (a *Client) UploadPipeline(params *UploadPipelineParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*UploadPipelineOK, error) {
 	// TODO: Validate the params before sending
@@ -124,7 +126,9 @@ func (a *Client) UploadPipeline(params *UploadPipelineParams, authInfo runtime.C
 }
 
 /*
-UploadPipelineVersion upload pipeline version API
+UploadPipelineVersion uploads a new version of an existing pipeline
+
+Creates an executable pipeline version under the parent pipeline identified by pipelineid.
 */
 func (a *Client) UploadPipelineVersion(params *UploadPipelineVersionParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*UploadPipelineVersionOK, error) {
 	// TODO: Validate the params before sending
