@@ -117,7 +117,12 @@ func (s *QuotaStore) Release(runID string) error {
 	if err != nil {
 		return util.NewInternalServerError(err, "failed to lock quota allocation")
 	}
-	_, err = tx.Exec(`UPDATE quota_limits SET CPUMilliUsed=MAX(0, CPUMilliUsed-?), MemoryMiBUsed=MAX(0, MemoryMiBUsed-?), GPU2080Used=MAX(0, GPU2080Used-?), GPUH200Used=MAX(0, GPUH200Used-?) WHERE ProjectID=?`, a.CPUMilli, a.MemoryMiB, a.GPU2080, a.GPUH200, a.ProjectID)
+	_, err = tx.Exec(`UPDATE quota_limits SET
+		CPUMilliUsed = CASE WHEN CPUMilliUsed > ? THEN CPUMilliUsed - ? ELSE 0 END,
+		MemoryMiBUsed = CASE WHEN MemoryMiBUsed > ? THEN MemoryMiBUsed - ? ELSE 0 END,
+		GPU2080Used = CASE WHEN GPU2080Used > ? THEN GPU2080Used - ? ELSE 0 END,
+		GPUH200Used = CASE WHEN GPUH200Used > ? THEN GPUH200Used - ? ELSE 0 END
+		WHERE ProjectID=?`, a.CPUMilli, a.CPUMilli, a.MemoryMiB, a.MemoryMiB, a.GPU2080, a.GPU2080, a.GPUH200, a.GPUH200, a.ProjectID)
 	if err != nil {
 		return util.NewInternalServerError(err, "failed to release quota usage")
 	}
