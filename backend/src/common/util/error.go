@@ -91,6 +91,13 @@ type UserError struct {
 func newUserError(internalError error, externalMessage string,
 	externalStatusCode codes.Code,
 ) *UserError {
+	// github.com/pkg/errors.Wrapf returns nil when err is nil, so callers that
+	// pass a nil error (e.g. NewResourceExhaustedError(nil, ...)) would produce a
+	// UserError whose internalError is nil. Calling Error() on it later (Log,
+	// GRPCStatus) panics with a nil interface dereference.
+	if internalError == nil {
+		internalError = errors.New(externalMessage)
+	}
 	return &UserError{
 		internalError:      internalError,
 		externalMessage:    externalMessage,
