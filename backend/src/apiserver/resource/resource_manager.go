@@ -30,6 +30,7 @@ import (
 
 	"github.com/cenkalti/backoff"
 	"github.com/golang/glog"
+	"github.com/google/uuid"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/archive"
 	kfpauth "github.com/kubeflow/pipelines/backend/src/apiserver/auth"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/client"
@@ -1015,6 +1016,10 @@ func (r *ResourceManager) RetryRun(ctx context.Context, runId string) error {
 // 1. Attempts to read logs directly from pod.
 // 2. Attempts to read logs from archive if reading from pod fails.
 func (r *ResourceManager) ReadLog(ctx context.Context, runId string, nodeId string, follow bool, dst io.Writer) error {
+	podName, err := r.resolveNodePodName(runId, nodeId)
+	if err != nil {
+		return util.NewBadRequestError(err, "Failed to read logs for run %v due to node resolution error", runId)
+	}
 	run, err := r.GetRun(runId)
 	if err != nil {
 		return util.NewBadRequestError(err, "Failed to read logs for run %v due to run fetching error", runId)
@@ -1024,15 +1029,57 @@ func (r *ResourceManager) ReadLog(ctx context.Context, runId string, nodeId stri
 	if err != nil {
 		return util.NewBadRequestError(err, "Failed to read logs for run %v due to namespace fetching error", runId)
 	}
-	err = r.readRunLogFromPod(ctx, namespace, nodeId, follow, dst)
-	if err != nil && r.logArchive != nil {
-		err = r.readRunLogFromArchive(string(run.WorkflowRuntimeManifest), nodeId, dst)
-		if err != nil {
-			return util.NewBadRequestError(err, "Failed to read logs for run %v", runId)
+	err = r.readRunLogFromPod(ctx, namespace, podName, follow, dst)
+	if err == nil {
+		return nil
+	}
+	if r.logArchive != nil {
+		if err = r.readRunLogFromArchive(string(run.WorkflowRuntimeManifest), podName, dst); err == nil {
+			return nil
 		}
 	}
-	if err != nil {
+	// The v2 launcher archives each step's console output as an executor-logs
+	// artifact recorded in the workflow manifest. This is the only surviving
+	// copy once the pod and its workflow are garbage collected.
+	if err = r.readRunLogFromExecutorLogsArtifact(ctx, runId, podName, dst); err != nil {
 		return util.NewBadRequestError(err, "Failed to read logs for run %v", runId)
+	}
+	return nil
+}
+
+// resolveNodePodName accepts either a Kubernetes pod name or a task id (UUID)
+// and returns the pod name backing that node. Container tasks map 1:1 to pods.
+func (r *ResourceManager) resolveNodePodName(runId string, nodeId string) (string, error) {
+	if _, err := uuid.Parse(nodeId); err != nil {
+		// Not a UUID — treat it as a pod name.
+		return nodeId, nil
+	}
+	task, err := r.GetTask(nodeId)
+	if err != nil {
+		return "", util.NewResourceNotFoundError("task", nodeId)
+	}
+	if task.RunID != runId {
+		return "", util.NewInvalidInputError("Task %v does not belong to run %v", nodeId, runId)
+	}
+	if task.PodName == "" {
+		return "", util.NewInvalidInputError("Task %v has no pod; it may be a DAG-level step. Pass the pod name of a container step instead", nodeId)
+	}
+	return task.PodName, nil
+}
+
+// Fetches a step's archived console output from the executor-logs artifact.
+func (r *ResourceManager) readRunLogFromExecutorLogsArtifact(ctx context.Context, runId string, nodeId string, dst io.Writer) error {
+	artifactPath, err := r.ResolveArtifactPath(runId, nodeId, "executor-logs")
+	if err != nil {
+		return util.Wrapf(err, "Failed to resolve executor-logs artifact for run %v node %v", runId, nodeId)
+	}
+	reader, err := r.objectStore.GetFileReader(ctx, artifactPath)
+	if err != nil {
+		return util.Wrapf(err, "Failed to read executor-logs artifact %v", artifactPath)
+	}
+	defer reader.Close()
+	if _, err = io.Copy(dst, reader); err != nil {
+		return util.NewInternalServerError(err, "Failed to stream executor-logs artifact %v", artifactPath)
 	}
 	return nil
 }
@@ -1693,6 +1740,10 @@ func (r *ResourceManager) CreateDefaultExperiment(namespace string) (string, err
 
 // ResolveArtifactPath resolves the object storage path for an artifact.
 func (r *ResourceManager) ResolveArtifactPath(runID string, nodeID string, artifactName string) (string, error) {
+	nodeID, err := r.resolveNodePodName(runID, nodeID)
+	if err != nil {
+		return "", err
+	}
 	run, err := r.runStore.GetRun(runID)
 	if err != nil {
 		return "", err

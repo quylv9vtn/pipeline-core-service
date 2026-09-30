@@ -15,9 +15,11 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/golang/glog"
@@ -58,25 +60,41 @@ func (s *RunLogServer) ReadRunLogV1(w http.ResponseWriter, r *http.Request) {
 
 	follow := vars[Follow] == "true" // defaults to false
 
-	w.WriteHeader(http.StatusOK)
+	if !follow {
+		// Buffer first so failures can still return a proper HTTP status.
+		var buf bytes.Buffer
+		if err := s.resourceManager.ReadLog(context.Background(), runId, nodeId, false, &buf); err != nil {
+			s.writeErrorToResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("Cache-Control", "no-cache, private")
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.Copy(w, &buf)
+		return
+	}
+
+	// Streaming mode: headers go out before the body, so a mid-stream failure
+	// can no longer change the status code.
 	w.Header().Set("Content-Type", "text/plain")
 	w.Header().Set("Cache-Control", "no-cache, private")
-
-	err := s.resourceManager.ReadLog(context.Background(), runId, nodeId, follow, w)
-	if err != nil {
-		s.writeErrorToResponse(w, http.StatusInternalServerError, err)
+	w.WriteHeader(http.StatusOK)
+	if err := s.resourceManager.ReadLog(context.Background(), runId, nodeId, true, w); err != nil {
+		glog.Errorf("Failed to stream run log for run %v node %v: %+v", runId, nodeId, err)
 	}
 }
 
 func (s *RunLogServer) writeErrorToResponse(w http.ResponseWriter, code int, err error) {
 	glog.Errorf("Failed to read run log. Error: %+v", err)
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	errorResponse := &api.Error{ErrorMessage: err.Error(), ErrorDetails: fmt.Sprintf("%+v", err)}
-	errBytes, err := json.Marshal(errorResponse)
-	if err != nil {
-		w.Write([]byte("Error reading run log"))
+	errBytes, jsonErr := json.Marshal(errorResponse)
+	if jsonErr != nil {
+		_, _ = w.Write([]byte("Error reading run log"))
+		return
 	}
-	w.Write(errBytes)
+	_, _ = w.Write(errBytes)
 }
 
 func NewRunLogServer(resourceManager *resource.ResourceManager) *RunLogServer {
