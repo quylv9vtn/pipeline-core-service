@@ -30,9 +30,10 @@ import (
 
 // ListRunTasksRequest and ListRunExecutionsRequest declare only run_id, so the
 // grpc-gateway cannot bind an optional `filter` query parameter for these two
-// endpoints. These handlers fill the gap: requests without a `filter` are
-// forwarded to the grpc-gateway unchanged; with a `filter`, the full list is
-// fetched through the gRPC handler and narrowed in memory.
+// endpoints. These handlers fill the gap: requests without a `filter` (after
+// shorthand parameters such as ?state=SUCCEEDED are rewritten into `filter`)
+// are forwarded to the grpc-gateway unchanged; with a `filter`, the full list
+// is fetched through the gRPC handler and narrowed in memory.
 //
 // Only filtering by "state" is supported. Predicates accept EQUALS and
 // NOT_EQUALS with a string value and IN with repeated string values, and
@@ -46,10 +47,16 @@ import (
 // ListRunTasksHttpHandler serves GET /apis/v2beta1/runs/{run_id}/tasks.
 func (s *RunServer) ListRunTasksHttpHandler(gatewayMux *runtime.ServeMux) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("filter") == "" {
-			gatewayMux.ServeHTTP(w, r)
+		rewritten, err := rewriteShorthandFilters(r, "state")
+		if err != nil {
+			writeRunMetadataHttpError(r.Context(), gatewayMux, w, r, err)
 			return
 		}
+		if rewritten.URL.Query().Get("filter") == "" {
+			gatewayMux.ServeHTTP(w, rewritten)
+			return
+		}
+		r = rewritten
 		ctx := r.Context()
 		response, err := s.ListRunTasks(ctx, &apiv2beta1.ListRunTasksRequest{RunId: mux.Vars(r)["run_id"]})
 		if err != nil {
@@ -81,10 +88,16 @@ func (s *RunServer) ListRunTasksHttpHandler(gatewayMux *runtime.ServeMux) http.H
 // ListRunExecutionsHttpHandler serves GET /apis/v2beta1/runs/{run_id}/executions.
 func (s *RunServer) ListRunExecutionsHttpHandler(gatewayMux *runtime.ServeMux) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("filter") == "" {
-			gatewayMux.ServeHTTP(w, r)
+		rewritten, err := rewriteShorthandFilters(r, "state")
+		if err != nil {
+			writeRunMetadataHttpError(r.Context(), gatewayMux, w, r, err)
 			return
 		}
+		if rewritten.URL.Query().Get("filter") == "" {
+			gatewayMux.ServeHTTP(w, rewritten)
+			return
+		}
+		r = rewritten
 		ctx := r.Context()
 		response, err := s.ListRunExecutions(ctx, &apiv2beta1.ListRunExecutionsRequest{RunId: mux.Vars(r)["run_id"]})
 		if err != nil {

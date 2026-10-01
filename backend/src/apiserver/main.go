@@ -405,14 +405,18 @@ func startHTTPProxy(resourceManager *resource.ResourceManager, metadataClient *m
 	runArtifactServer := server.NewRunArtifactServer(resourceManager)
 	topMux.HandleFunc("/apis/v2beta1/runs/{run_id}/nodes/{node_id}/artifacts/{artifact_name}:read", runArtifactServer.ReadArtifact).Methods(http.MethodGet)
 
-	// Run task and execution lists accept an optional `filter` (state only)
-	// that ListRunTasksRequest/ListRunExecutionsRequest do not declare, so
-	// these routes are served directly; requests without a filter are
-	// forwarded to the gateway mux unchanged.
+	// Run and recurring-run list endpoints accept shorthand filter parameters
+	// (?state=..., ?mode=..., ?status=...) plus an optional `filter` for run
+	// tasks and executions that ListRunTasksRequest/ListRunExecutionsRequest
+	// do not declare, so these routes are served directly; requests without
+	// those parameters are forwarded to the gateway mux unchanged.
 	runMetadataServer := server.NewRunServer(resourceManager, &server.RunServerOptions{
 		CollectMetrics: *collectMetricsFlag,
 		MetadataReader: metadataClient,
 	})
+	jobListServer := server.NewJobServer(resourceManager, &server.JobServerOptions{CollectMetrics: *collectMetricsFlag})
+	topMux.HandleFunc("/apis/v2beta1/runs", runMetadataServer.ListRunsHttpHandler(runtimeMux)).Methods(http.MethodGet)
+	topMux.HandleFunc("/apis/v2beta1/recurringruns", jobListServer.ListRecurringRunsHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/runs/{run_id}/tasks", runMetadataServer.ListRunTasksHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/runs/{run_id}/executions", runMetadataServer.ListRunExecutionsHttpHandler(runtimeMux)).Methods(http.MethodGet)
 
