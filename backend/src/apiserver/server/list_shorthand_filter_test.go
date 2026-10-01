@@ -116,4 +116,46 @@ func TestRewriteShorthandFilters(t *testing.T) {
 		assert.Equal(t, "status", filterProto.GetPredicates()[1].GetKey())
 		assert.Equal(t, []string{"ENABLED"}, filterProto.GetPredicates()[1].GetStringValues().GetValues())
 	})
+
+	t.Run("display_name is matched verbatim as an IN predicate", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodGet,
+			"/apis/v2beta1/runs?display_name=My%20Run-01&page_size=5", nil)
+		rewritten, err := rewriteShorthandFilters(request, "state", "display_name", "name")
+		assert.Nil(t, err)
+		assert.Empty(t, rewritten.URL.Query().Get("display_name"))
+		assert.Equal(t, "5", rewritten.URL.Query().Get("page_size"))
+
+		filterProto := parsedQueryFilter(t, rewritten)
+		assert.Len(t, filterProto.GetPredicates(), 1)
+		predicate := filterProto.GetPredicates()[0]
+		assert.Equal(t, "display_name", predicate.GetKey())
+		assert.Equal(t, apiv2beta1.Predicate_IN, predicate.GetOperation())
+		// Casing must be preserved — names are case-sensitive.
+		assert.Equal(t, []string{"My Run-01"}, predicate.GetStringValues().GetValues())
+	})
+
+	t.Run("name alias and multiple display names", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodGet,
+			"/apis/v2beta1/runs?name=nightly,nightly-gpu", nil)
+		rewritten, err := rewriteShorthandFilters(request, "display_name", "name")
+		assert.Nil(t, err)
+		filterProto := parsedQueryFilter(t, rewritten)
+		assert.Len(t, filterProto.GetPredicates(), 1)
+		predicate := filterProto.GetPredicates()[0]
+		assert.Equal(t, "name", predicate.GetKey())
+		assert.Equal(t, []string{"nightly", "nightly-gpu"}, predicate.GetStringValues().GetValues())
+	})
+
+	t.Run("combines state and display_name shorthands", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodGet,
+			"/apis/v2beta1/runs?state=failed&display_name=demo", nil)
+		rewritten, err := rewriteShorthandFilters(request, "state", "display_name", "name")
+		assert.Nil(t, err)
+		filterProto := parsedQueryFilter(t, rewritten)
+		assert.Len(t, filterProto.GetPredicates(), 2)
+		assert.Equal(t, "state", filterProto.GetPredicates()[0].GetKey())
+		assert.Equal(t, []string{"FAILED"}, filterProto.GetPredicates()[0].GetStringValues().GetValues())
+		assert.Equal(t, "display_name", filterProto.GetPredicates()[1].GetKey())
+		assert.Equal(t, []string{"demo"}, filterProto.GetPredicates()[1].GetStringValues().GetValues())
+	})
 }

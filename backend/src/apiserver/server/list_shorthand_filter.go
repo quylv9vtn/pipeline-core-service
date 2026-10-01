@@ -29,21 +29,35 @@ import (
 // parameters instead of URL-encoded Filter JSON:
 //
 //	GET /apis/v2beta1/runs?state=RUNNING,FAILED
+//	GET /apis/v2beta1/runs?display_name=my-run
+//	GET /apis/v2beta1/runs?name=my-run                 (v1beta1 alias)
 //	GET /apis/v2beta1/recurringruns?mode=DISABLED
 //	GET /apis/v2beta1/recurringruns?status=ENABLED
+//	GET /apis/v2beta1/experiments?display_name=demo
+//	GET /apis/v2beta1/pipelines?display_name=etl
 //	GET /apis/v2beta1/runs/{run_id}/tasks?state=SUCCEEDED
 //	GET /apis/v2beta1/runs/{run_id}/executions?state=COMPLETE,FAILED
 //
 // Each parameter holds a comma-separated list that is translated into one IN
-// predicate on the same filter key. Values are upper-cased (states, mode and
-// status are stored upper-case) and combined with an optional `filter`
-// parameter as extra AND-ed predicates.
+// predicate on the same filter key and combined with an optional `filter`
+// parameter as extra AND-ed predicates. Values of state-like keys
+// (state, mode, status) are upper-cased before matching; name values are
+// kept verbatim (names are case-sensitive).
+
+// upperCasedKeys lists the shorthand keys whose values are stored upper-case
+// and are therefore matched case-insensitively. Every other shorthand key
+// (display_name, name, ...) is matched verbatim.
+var upperCasedKeys = map[string]bool{
+	"state":  true,
+	"mode":   true,
+	"status": true,
+}
 
 // rewriteShorthandFilters moves the given shorthand query parameters into the
 // `filter` query parameter as Filter JSON. The grpc-gateway then binds the
-// result to ListRunsRequest.filter / ListRecurringRunsRequest.filter, and the
-// run metadata handlers apply the same JSON in memory for run tasks and
-// executions. Requests without any shorthand parameter are returned unchanged.
+// result to the List*.filter proto fields, and the run metadata handlers apply
+// the same JSON in memory for run tasks and executions. Requests without any
+// shorthand parameter are returned unchanged.
 func rewriteShorthandFilters(r *http.Request, shorthandKeys ...string) (*http.Request, error) {
 	query := r.URL.Query()
 	predicates := make([]*apiv2beta1.Predicate, 0, len(shorthandKeys))
@@ -58,7 +72,10 @@ func rewriteShorthandFilters(r *http.Request, shorthandKeys ...string) (*http.Re
 		values := make([]string, 0)
 		for _, value := range strings.Split(raw, ",") {
 			if value = strings.TrimSpace(value); value != "" {
-				values = append(values, strings.ToUpper(value))
+				if upperCasedKeys[key] {
+					value = strings.ToUpper(value)
+				}
+				values = append(values, value)
 			}
 		}
 		if len(values) == 0 {
@@ -98,11 +115,11 @@ func rewriteShorthandFilters(r *http.Request, shorthandKeys ...string) (*http.Re
 }
 
 // ListRunsHttpHandler serves GET /apis/v2beta1/runs with optional shorthand
-// state filtering, e.g. ?state=RUNNING,FAILED. Requests without shorthand
-// parameters are forwarded to the grpc-gateway unchanged.
+// filtering, e.g. ?state=RUNNING,FAILED or ?display_name=my-run. Requests
+// without shorthand parameters are forwarded to the grpc-gateway unchanged.
 func (s *RunServer) ListRunsHttpHandler(gatewayMux *runtime.ServeMux) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		rewritten, err := rewriteShorthandFilters(r, "state")
+		rewritten, err := rewriteShorthandFilters(r, "state", "display_name", "name")
 		if err != nil {
 			writeRunMetadataHttpError(r.Context(), gatewayMux, w, r, err)
 			return
@@ -112,12 +129,40 @@ func (s *RunServer) ListRunsHttpHandler(gatewayMux *runtime.ServeMux) http.Handl
 }
 
 // ListRecurringRunsHttpHandler serves GET /apis/v2beta1/recurringruns with
-// optional shorthand mode/status filtering, e.g. ?mode=DISABLED or
-// ?status=ENABLED. Requests without shorthand parameters are forwarded to the
-// grpc-gateway unchanged.
+// optional shorthand filtering, e.g. ?mode=DISABLED or ?display_name=nightly.
+// Requests without shorthand parameters are forwarded to the grpc-gateway
+// unchanged.
 func (s *JobServer) ListRecurringRunsHttpHandler(gatewayMux *runtime.ServeMux) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		rewritten, err := rewriteShorthandFilters(r, "mode", "status")
+		rewritten, err := rewriteShorthandFilters(r, "mode", "status", "display_name", "name")
+		if err != nil {
+			writeRunMetadataHttpError(r.Context(), gatewayMux, w, r, err)
+			return
+		}
+		gatewayMux.ServeHTTP(w, rewritten)
+	}
+}
+
+// ListExperimentsHttpHandler serves GET /apis/v2beta1/experiments with
+// optional shorthand filtering, e.g. ?display_name=demo. Requests without
+// shorthand parameters are forwarded to the grpc-gateway unchanged.
+func (s *ExperimentServer) ListExperimentsHttpHandler(gatewayMux *runtime.ServeMux) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		rewritten, err := rewriteShorthandFilters(r, "display_name", "name")
+		if err != nil {
+			writeRunMetadataHttpError(r.Context(), gatewayMux, w, r, err)
+			return
+		}
+		gatewayMux.ServeHTTP(w, rewritten)
+	}
+}
+
+// ListPipelinesHttpHandler serves GET /apis/v2beta1/pipelines with optional
+// shorthand filtering, e.g. ?display_name=etl. Requests without shorthand
+// parameters are forwarded to the grpc-gateway unchanged.
+func (s *PipelineServer) ListPipelinesHttpHandler(gatewayMux *runtime.ServeMux) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		rewritten, err := rewriteShorthandFilters(r, "display_name", "name")
 		if err != nil {
 			writeRunMetadataHttpError(r.Context(), gatewayMux, w, r, err)
 			return
