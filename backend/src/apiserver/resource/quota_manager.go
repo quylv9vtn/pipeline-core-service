@@ -39,7 +39,12 @@ func (r *ResourceManager) projectIDForNamespace(ctx context.Context, namespace s
 	if namespace == "" || r.k8sCoreClient == nil {
 		return "", nil
 	}
-	ns, err := r.k8sCoreClient.GetClientSet().CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+	clientSet := r.k8sCoreClient.GetClientSet()
+	if clientSet == nil {
+		// No real cluster available (e.g. unit tests) — skip quota enforcement.
+		return "", nil
+	}
+	ns, err := clientSet.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
 	if err != nil {
 		// Namespaces created before project provisioning do not participate in
 		// project quota enforcement.

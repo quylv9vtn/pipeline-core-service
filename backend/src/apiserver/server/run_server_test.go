@@ -848,7 +848,9 @@ func TestCreateRunRejectsExperimentOutsideParentPipelineNamespace(t *testing.T) 
 	})
 	assert.Nil(t, created)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "belongs to namespace 'project-b' instead of 'project-a'")
+	assert.Contains(t, err.Error(), "does not belong to the requested namespace 'project-a'")
+	// The error must not reveal which namespace the experiment actually belongs to.
+	assert.NotContains(t, err.Error(), "project-b")
 }
 
 func TestGetRunV1(t *testing.T) {

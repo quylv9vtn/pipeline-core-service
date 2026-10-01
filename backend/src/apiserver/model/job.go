@@ -221,6 +221,14 @@ var jobAPIToModelFieldMap = map[string]string{
 	"created_at":       "CreatedAtInSec",
 	"updated_at":       "UpdatedAtInSec",
 	"description":      "Description",
+	// Both API fields reflect the same underlying state. Conditions stores the
+	// normalized v2 status (ENABLED/DISABLED/STATUS_UNSPECIFIED) and the API
+	// mode/status are derived from it (api_converter.toApiJobStatus), so
+	// filtering by either key matches the values clients see in responses.
+	// Filtering by the Enabled boolean column is not possible because the
+	// filter proto has no bool value type.
+	"mode":   "Conditions", // v2beta1 API
+	"status": "Conditions", // v1beta1 and v2beta1 API
 }
 
 // APIToModelFieldMap returns a map from API names to field names for model Job.
@@ -254,6 +262,8 @@ func (j *Job) GetFieldValue(name string) interface{} {
 		return j.PipelineId
 	case "Description":
 		return j.Description
+	case "Conditions":
+		return j.Conditions
 	default:
 		return nil
 	}

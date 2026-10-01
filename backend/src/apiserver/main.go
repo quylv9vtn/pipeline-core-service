@@ -227,9 +227,22 @@ func main() {
 
 	wg.Add(1)
 	go reconcileSwfCrs(resourceManager, backgroundCtx, &wg)
-	go startRPCServer(resourceManager, tlsCfg)
+
+	metadataPort := os.Getenv("METADATA_SERVICE_PORT")
+	if metadataPort == "" {
+		metadataPort = os.Getenv("METADATA_GRPC_SERVICE_SERVICE_PORT")
+	}
+	if metadataPort == "" {
+		metadataPort = "8080"
+	}
+	metadataClient, err := metadata.NewClient(common.GetMetadataServiceName(), metadataPort, nil)
+	if err != nil {
+		glog.Fatalf("Failed to initialize the direct ML Metadata gRPC client: %v", err)
+	}
+
+	go startRPCServer(resourceManager, metadataClient, tlsCfg)
 	// This is blocking
-	startHTTPProxy(resourceManager, *usePipelinesKubernetesStorage, tlsCfg)
+	startHTTPProxy(resourceManager, metadataClient, *usePipelinesKubernetesStorage, tlsCfg)
 	backgroundCancel()
 	wg.Wait()
 }
@@ -251,7 +264,7 @@ func grpcCustomMatcher(key string) (string, bool) {
 	return strings.ToLower(key), false
 }
 
-func startRPCServer(resourceManager *resource.ResourceManager, tlsCfg *tls.Config) {
+func startRPCServer(resourceManager *resource.ResourceManager, metadataClient *metadata.Client, tlsCfg *tls.Config) {
 	var s *grpc.Server
 
 	grpc_prometheus.EnableHandlingTimeHistogram(
@@ -288,17 +301,6 @@ func startRPCServer(resourceManager *resource.ResourceManager, tlsCfg *tls.Confi
 
 	PipelineServer := server.NewPipelineServer(resourceManager, &server.PipelineServerOptions{CollectMetrics: *collectMetricsFlag})
 
-	metadataPort := os.Getenv("METADATA_SERVICE_PORT")
-	if metadataPort == "" {
-		metadataPort = os.Getenv("METADATA_GRPC_SERVICE_SERVICE_PORT")
-	}
-	if metadataPort == "" {
-		metadataPort = "8080"
-	}
-	metadataClient, err := metadata.NewClient(common.GetMetadataServiceName(), metadataPort, nil)
-	if err != nil {
-		glog.Fatalf("Failed to initialize the direct ML Metadata gRPC client: %v", err)
-	}
 	RunServer := server.NewRunServer(resourceManager, &server.RunServerOptions{
 		CollectMetrics: *collectMetricsFlag,
 		MetadataReader: metadataClient,
@@ -336,7 +338,7 @@ func startRPCServer(resourceManager *resource.ResourceManager, tlsCfg *tls.Confi
 	glog.Info("RPC server started")
 }
 
-func startHTTPProxy(resourceManager *resource.ResourceManager, usePipelinesKubernetesStorage bool, tlsCfg *tls.Config) {
+func startHTTPProxy(resourceManager *resource.ResourceManager, metadataClient *metadata.Client, usePipelinesKubernetesStorage bool, tlsCfg *tls.Config) {
 	glog.Info("Starting Http Proxy")
 
 	ctx := context.Background()
@@ -402,6 +404,17 @@ func startHTTPProxy(resourceManager *resource.ResourceManager, usePipelinesKuber
 	// Artifact reading endpoints (implemented with streaming for memory efficiency)
 	runArtifactServer := server.NewRunArtifactServer(resourceManager)
 	topMux.HandleFunc("/apis/v2beta1/runs/{run_id}/nodes/{node_id}/artifacts/{artifact_name}:read", runArtifactServer.ReadArtifact).Methods(http.MethodGet)
+
+	// Run task and execution lists accept an optional `filter` (state only)
+	// that ListRunTasksRequest/ListRunExecutionsRequest do not declare, so
+	// these routes are served directly; requests without a filter are
+	// forwarded to the gateway mux unchanged.
+	runMetadataServer := server.NewRunServer(resourceManager, &server.RunServerOptions{
+		CollectMetrics: *collectMetricsFlag,
+		MetadataReader: metadataClient,
+	})
+	topMux.HandleFunc("/apis/v2beta1/runs/{run_id}/tasks", runMetadataServer.ListRunTasksHttpHandler(runtimeMux)).Methods(http.MethodGet)
+	topMux.HandleFunc("/apis/v2beta1/runs/{run_id}/executions", runMetadataServer.ListRunExecutionsHttpHandler(runtimeMux)).Methods(http.MethodGet)
 
 	topMux.PathPrefix("/apis/").Handler(runtimeMux)
 

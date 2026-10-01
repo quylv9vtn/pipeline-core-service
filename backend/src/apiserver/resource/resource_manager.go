@@ -2245,8 +2245,10 @@ func (r *ResourceManager) CheckExperimentBelongsToNamespace(experimentId string,
 		return util.Wrapf(err, "Failed to validate the namespace of experiment %s", experimentId)
 	}
 	if experimentNamespace != "" && experimentNamespace != namespace {
-		return util.NewInvalidInputError("Failed to validate the namespace of experiment: experiment %s belongs to namespace '%s' (claimed a different namespace '%s')",
-			experimentId, experimentNamespace, namespace)
+		// Do not reveal the actual namespace of the experiment: the caller may be
+		// probing another project's resources.
+		return util.NewInvalidInputError("Failed to validate the namespace of experiment: experiment %s does not belong to the requested namespace '%s'",
+			experimentId, namespace)
 	}
 	return nil
 }
@@ -2267,7 +2269,9 @@ func (r *ResourceManager) GetValidExperimentNamespacePair(experimentId string, n
 			return "", "", util.Wrapf(err, "Failed to fetch namespace for experiment %v", experimentId)
 		}
 		if namespace != "" && namespace != ns {
-			return "", "", util.NewInvalidInputError("Experiment %v belongs to namespace '%v' instead of '%v'", experimentId, ns, namespace)
+			// Do not reveal the actual namespace of the experiment: the caller may be
+			// probing another project's resources.
+			return "", "", util.NewInvalidInputError("Experiment %v does not belong to the requested namespace '%v'", experimentId, namespace)
 		}
 		namespace = ns
 	} else {
