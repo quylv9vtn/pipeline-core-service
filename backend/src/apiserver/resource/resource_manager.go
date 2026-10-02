@@ -526,6 +526,46 @@ func (r *ResourceManager) UpdatePipelineVersionStatus(pipelineVersionId string, 
 	return nil
 }
 
+// UpdatePipelineFields updates the display_name and description of a pipeline.
+func (r *ResourceManager) UpdatePipelineFields(pipelineId, displayName, description string) error {
+	return r.pipelineStore.UpdatePipelineFields(pipelineId, displayName, description)
+}
+
+// UpdatePipelineVersionFields updates the display_name and description of a pipeline version.
+func (r *ResourceManager) UpdatePipelineVersionFields(pipelineVersionId, displayName, description string) error {
+	return r.pipelineStore.UpdatePipelineVersionFields(pipelineVersionId, displayName, description)
+}
+
+// UpdateJobFields updates the display_name and description of a job (recurring run).
+func (r *ResourceManager) UpdateJobFields(id, displayName, description string) error {
+	return r.jobStore.UpdateJobFields(id, displayName, description)
+}
+
+// CountJobsByExperiment returns the number of recurring runs belonging to an experiment.
+func (r *ResourceManager) CountJobsByExperiment(experimentId string) (int, error) {
+	return r.jobStore.CountJobsByExperiment(experimentId)
+}
+
+// CountRunsByExperiment returns the number of runs belonging to an experiment.
+func (r *ResourceManager) CountRunsByExperiment(experimentId string) (int, error) {
+	return r.runStore.CountRunsByExperiment(experimentId)
+}
+
+// ListAllPipelineVersionIDsByPipeline returns the UUIDs of all versions belonging to a pipeline.
+func (r *ResourceManager) ListAllPipelineVersionIDsByPipeline(pipelineId string) ([]string, error) {
+	return r.pipelineStore.ListAllPipelineVersionIDsByPipeline(pipelineId)
+}
+
+// ListRunIDsByPipelineVersion returns the UUIDs of all runs referencing the given pipeline version.
+func (r *ResourceManager) ListRunIDsByPipelineVersion(pipelineVersionId string) ([]string, error) {
+	return r.runStore.ListRunIDsByPipelineVersion(pipelineVersionId)
+}
+
+// ListRunIDsByJob returns the UUIDs of all runs spawned by the given recurring run (job).
+func (r *ResourceManager) ListRunIDsByJob(jobId string) ([]string, error) {
+	return r.runStore.ListRunIDsByJob(jobId)
+}
+
 // Returns the latest template for a specified pipeline id.
 func (r *ResourceManager) GetPipelineLatestTemplate(pipelineId string) ([]byte, error) {
 	// Verify pipeline exists

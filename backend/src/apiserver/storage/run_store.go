@@ -81,6 +81,17 @@ type RunStoreInterface interface {
 
 	// Terminates a run.
 	TerminateRun(runId string) error
+
+	// ListRunIDsByPipelineVersion returns the IDs of all runs that reference
+	// the given pipeline version.
+	ListRunIDsByPipelineVersion(pipelineVersionId string) ([]string, error)
+
+	// ListRunIDsByJob returns the IDs of all runs that were spawned by the
+	// given recurring run (job).
+	ListRunIDsByJob(jobId string) ([]string, error)
+
+	// CountRunsByExperiment returns the number of runs associated with the given experiment.
+	CountRunsByExperiment(experimentId string) (int, error)
 }
 
 type RunStore struct {
@@ -570,6 +581,68 @@ func (s *RunStore) DeleteRun(id string) error {
 		return util.NewInternalServerError(err, "Failed to delete run %v and its resource references from table", id)
 	}
 	return nil
+}
+
+// ListRunIDsByPipelineVersion returns the UUIDs of all runs that reference the
+// given pipeline version.
+func (s *RunStore) ListRunIDsByPipelineVersion(pipelineVersionId string) ([]string, error) {
+	sql, args, err := sq.Select("UUID").From("run_details").
+		Where(sq.Eq{"PipelineVersionId": pipelineVersionId}).ToSql()
+	if err != nil {
+		return nil, util.NewInternalServerError(err, "Failed to build query to list run IDs by pipeline version %s", pipelineVersionId)
+	}
+	rows, err := s.db.Query(sql, args...)
+	if err != nil {
+		return nil, util.NewInternalServerError(err, "Failed to list run IDs by pipeline version %s", pipelineVersionId)
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if scanErr := rows.Scan(&id); scanErr != nil {
+			return nil, util.NewInternalServerError(scanErr, "Failed to scan run ID for pipeline version %s", pipelineVersionId)
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+// ListRunIDsByJob returns the UUIDs of all runs spawned by the given recurring
+// run (job).
+func (s *RunStore) ListRunIDsByJob(jobId string) ([]string, error) {
+	sql, args, err := sq.Select("UUID").From("run_details").
+		Where(sq.Eq{"JobUUID": jobId}).ToSql()
+	if err != nil {
+		return nil, util.NewInternalServerError(err, "Failed to build query to list run IDs by job %s", jobId)
+	}
+	rows, err := s.db.Query(sql, args...)
+	if err != nil {
+		return nil, util.NewInternalServerError(err, "Failed to list run IDs by job %s", jobId)
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if scanErr := rows.Scan(&id); scanErr != nil {
+			return nil, util.NewInternalServerError(scanErr, "Failed to scan run ID for job %s", jobId)
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+// CountRunsByExperiment returns the number of runs associated with the given experiment.
+func (s *RunStore) CountRunsByExperiment(experimentId string) (int, error) {
+	sql, args, err := sq.Select("count(*)").From("run_details").
+		Where(sq.Eq{"ExperimentUUID": experimentId}).ToSql()
+	if err != nil {
+		return 0, util.NewInternalServerError(err, "Failed to build query to count runs for experiment %s", experimentId)
+	}
+	var count int
+	if err := s.db.QueryRow(sql, args...).Scan(&count); err != nil {
+		return 0, util.NewInternalServerError(err, "Failed to count runs for experiment %s", experimentId)
+	}
+	return count, nil
 }
 
 // Returns a new RunStore.

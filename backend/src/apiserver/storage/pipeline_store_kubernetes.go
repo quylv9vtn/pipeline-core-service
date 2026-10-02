@@ -435,6 +435,30 @@ func (k *PipelineStoreKubernetes) ListPipelineVersions(pipelineId string, opts *
 	return pipelineVersions[nextPage:upperBound], len(pipelineVersions), npt, err
 }
 
+// UpdatePipelineFields is not supported for the Kubernetes-backed store.
+func (k *PipelineStoreKubernetes) UpdatePipelineFields(pipelineId, displayName, description string) error {
+	return util.NewInternalServerError(
+		util.NewInvalidInputError("UpdatePipelineFields not supported for Kubernetes store"),
+		"Not implemented",
+	)
+}
+
+// UpdatePipelineVersionFields is not supported for the Kubernetes-backed store.
+func (k *PipelineStoreKubernetes) UpdatePipelineVersionFields(pipelineVersionId, displayName, description string) error {
+	return util.NewInternalServerError(
+		util.NewInvalidInputError("UpdatePipelineVersionFields not supported for Kubernetes store"),
+		"Not implemented",
+	)
+}
+
+// ListAllPipelineVersionIDsByPipeline is not supported for the Kubernetes-backed store.
+func (k *PipelineStoreKubernetes) ListAllPipelineVersionIDsByPipeline(pipelineId string) ([]string, error) {
+	return nil, util.NewInternalServerError(
+		util.NewInvalidInputError("ListAllPipelineVersionIDsByPipeline not supported for Kubernetes store"),
+		"Not implemented",
+	)
+}
+
 func (k *PipelineStoreKubernetes) DeletePipelineVersion(pipelineVersionId string) error {
 	k8sPipelineVersion, err := k.getK8sPipelineVersion(context.TODO(), pipelineVersionId)
 	if err != nil {

@@ -73,6 +73,13 @@ type JobStoreInterface interface {
 
 	// Removes a recurring run entry from the database.
 	DeleteJob(id string) error
+
+	// UpdateJobFields updates DisplayName and Description of a job.
+	UpdateJobFields(id, displayName, description string) error
+
+	// CountJobsByExperiment returns the number of jobs (recurring runs) associated
+	// with the given experiment.
+	CountJobsByExperiment(experimentId string) (int, error)
 }
 
 type JobStore struct {
@@ -446,6 +453,43 @@ func (s *JobStore) UpdateJob(swf *util.ScheduledWorkflow) error {
 	}
 
 	return nil
+}
+
+// UpdateJobFields updates DisplayName and Description of a job (recurring run).
+func (s *JobStore) UpdateJobFields(id, displayName, description string) error {
+	now := s.time.Now().Unix()
+	sql, args, err := sq.
+		Update("jobs").
+		SetMap(sq.Eq{
+			"DisplayName":    displayName,
+			"Description":    description,
+			"UpdatedAtInSec": now,
+		}).
+		Where(sq.Eq{"UUID": id}).
+		ToSql()
+	if err != nil {
+		return util.NewInternalServerError(err, "Error when creating query to update job %v fields", id)
+	}
+	_, err = s.db.Exec(sql, args...)
+	if err != nil {
+		return util.NewInternalServerError(err, "Error when updating job %v fields", id)
+	}
+	return nil
+}
+
+// CountJobsByExperiment returns the number of jobs (recurring runs) that belong
+// to the given experiment.
+func (s *JobStore) CountJobsByExperiment(experimentId string) (int, error) {
+	sql, args, err := sq.Select("count(*)").From("jobs").
+		Where(sq.Eq{"ExperimentUUID": experimentId}).ToSql()
+	if err != nil {
+		return 0, util.NewInternalServerError(err, "Failed to build query to count jobs for experiment %s", experimentId)
+	}
+	var count int
+	if err := s.db.QueryRow(sql, args...).Scan(&count); err != nil {
+		return 0, util.NewInternalServerError(err, "Failed to count jobs for experiment %s", experimentId)
+	}
+	return count, nil
 }
 
 // If pipelineStore is provided, it will be used instead of direct database queries for getting pipelines

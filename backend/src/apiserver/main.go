@@ -418,12 +418,24 @@ func startHTTPProxy(resourceManager *resource.ResourceManager, metadataClient *m
 	jobListServer := server.NewJobServer(resourceManager, &server.JobServerOptions{CollectMetrics: *collectMetricsFlag})
 	experimentListServer := server.NewExperimentServer(resourceManager, &server.ExperimentServerOptions{CollectMetrics: *collectMetricsFlag})
 	pipelineListServer := server.NewPipelineServer(resourceManager, &server.PipelineServerOptions{CollectMetrics: *collectMetricsFlag})
+	topMux.HandleFunc("/apis/v2beta1/runs:batchDelete", runMetadataServer.BatchDeleteRunsHttpHandler).Methods(http.MethodPost)
+	topMux.HandleFunc("/apis/v2beta1/executions", runMetadataServer.ListExecutionsHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/runs", runMetadataServer.ListRunsHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/recurringruns", jobListServer.ListRecurringRunsHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/runs/{run_id}/tasks", runMetadataServer.ListRunTasksHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/runs/{run_id}/executions", runMetadataServer.ListRunExecutionsHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/experiments", experimentListServer.ListExperimentsHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/pipelines", pipelineListServer.ListPipelinesHttpHandler(runtimeMux)).Methods(http.MethodGet)
+	// PATCH handlers: update display_name and description.
+	topMux.HandleFunc("/apis/v2beta1/pipelines/{pipeline_id}", pipelineListServer.PatchPipelineHttpHandler(runtimeMux)).Methods(http.MethodPatch)
+	topMux.HandleFunc("/apis/v2beta1/pipelines/{pipeline_id}/versions/{pipeline_version_id}", pipelineListServer.PatchPipelineVersionHttpHandler(runtimeMux)).Methods(http.MethodPatch)
+	topMux.HandleFunc("/apis/v2beta1/recurringruns/{recurring_run_id}", jobListServer.PatchRecurringRunHttpHandler(runtimeMux)).Methods(http.MethodPatch)
+	// DELETE handlers with cascade support: ?cascade=true deletes associated runs/versions first.
+	topMux.HandleFunc("/apis/v2beta1/pipelines/{pipeline_id}", pipelineListServer.DeletePipelineHttpHandler(runtimeMux)).Methods(http.MethodDelete)
+	topMux.HandleFunc("/apis/v2beta1/pipelines/{pipeline_id}/versions/{pipeline_version_id}", pipelineListServer.DeletePipelineVersionHttpHandler(runtimeMux)).Methods(http.MethodDelete)
+	topMux.HandleFunc("/apis/v2beta1/recurringruns/{recurring_run_id}", jobListServer.DeleteRecurringRunHttpHandler(runtimeMux)).Methods(http.MethodDelete)
+	// Experiment delete: no cascade, rejects if jobs or runs still reference it.
+	topMux.HandleFunc("/apis/v2beta1/experiments/{experiment_id}", experimentListServer.DeleteExperimentHttpHandler(runtimeMux)).Methods(http.MethodDelete)
 
 	topMux.PathPrefix("/apis/").Handler(runtimeMux)
 

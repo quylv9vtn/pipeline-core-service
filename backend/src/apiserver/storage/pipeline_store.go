@@ -110,6 +110,15 @@ type PipelineStoreInterface interface {
 	ListPipelineVersions(pipelineId string, opts *list.Options) ([]*model.PipelineVersion, int, string, error)
 	UpdatePipelineVersionStatus(pipelineVersionId string, status model.PipelineVersionStatus) error
 	DeletePipelineVersion(pipelineVersionId string) error
+
+	// UpdatePipelineFields updates DisplayName and Description of a pipeline.
+	UpdatePipelineFields(pipelineId, displayName, description string) error
+	// UpdatePipelineVersionFields updates DisplayName and Description of a pipeline version.
+	UpdatePipelineVersionFields(pipelineVersionId, displayName, description string) error
+
+	// ListAllPipelineVersionIDsByPipeline returns the UUIDs of every version
+	// that belongs to the given pipeline (all statuses, no pagination).
+	ListAllPipelineVersionIDsByPipeline(pipelineId string) ([]string, error)
 }
 
 type PipelineStore struct {
@@ -718,6 +727,62 @@ func (s *PipelineStore) UpdatePipelineVersionStatus(id string, status model.Pipe
 		return util.NewInternalServerError(err, "Failed to create query to update status to %v of a pipeline version %v", string(status), id)
 	}
 	return s.ExecuteSQL(sql, args, "update", "status of a pipeline version")
+}
+
+// UpdatePipelineFields updates DisplayName and Description of a pipeline.
+func (s *PipelineStore) UpdatePipelineFields(pipelineId, displayName, description string) error {
+	sql, args, err := sq.
+		Update("pipelines").
+		SetMap(sq.Eq{
+			"DisplayName": displayName,
+			"Description": description,
+		}).
+		Where(sq.Eq{"UUID": pipelineId}).
+		ToSql()
+	if err != nil {
+		return util.NewInternalServerError(err, "Failed to create query to update pipeline %v", pipelineId)
+	}
+	return s.ExecuteSQL(sql, args, "update", "pipeline")
+}
+
+// UpdatePipelineVersionFields updates DisplayName and Description of a pipeline version.
+func (s *PipelineStore) UpdatePipelineVersionFields(pipelineVersionId, displayName, description string) error {
+	sql, args, err := sq.
+		Update("pipeline_versions").
+		SetMap(sq.Eq{
+			"DisplayName": displayName,
+			"Description": description,
+		}).
+		Where(sq.Eq{"UUID": pipelineVersionId}).
+		ToSql()
+	if err != nil {
+		return util.NewInternalServerError(err, "Failed to create query to update pipeline version %v", pipelineVersionId)
+	}
+	return s.ExecuteSQL(sql, args, "update", "pipeline version")
+}
+
+// ListAllPipelineVersionIDsByPipeline returns the UUIDs of all versions that
+// belong to the given pipeline (across all statuses, no pagination).
+func (s *PipelineStore) ListAllPipelineVersionIDsByPipeline(pipelineId string) ([]string, error) {
+	sql, args, err := sq.Select("UUID").From("pipeline_versions").
+		Where(sq.Eq{"PipelineId": pipelineId}).ToSql()
+	if err != nil {
+		return nil, util.NewInternalServerError(err, "Failed to build query to list version IDs for pipeline %s", pipelineId)
+	}
+	rows, err := s.db.Query(sql, args...)
+	if err != nil {
+		return nil, util.NewInternalServerError(err, "Failed to list version IDs for pipeline %s", pipelineId)
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if scanErr := rows.Scan(&id); scanErr != nil {
+			return nil, util.NewInternalServerError(scanErr, "Failed to scan version ID for pipeline %s", pipelineId)
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
 
 // Factory function for pipeline store.
