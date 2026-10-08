@@ -46,6 +46,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -586,6 +587,10 @@ func (r *ResourceManager) ListRunIDsByJob(jobId string) ([]string, error) {
 	return r.runStore.ListRunIDsByJob(jobId)
 }
 
+func (r *ResourceManager) ListRetryAttempts(runId string) ([]*model.RunRetryAttempt, error) {
+	return r.runStore.ListRetryAttempts(runId)
+}
+
 // Returns the latest template for a specified pipeline id.
 func (r *ResourceManager) GetPipelineLatestTemplate(pipelineId string) ([]byte, error) {
 	// Verify pipeline exists
@@ -1069,7 +1074,38 @@ func (r *ResourceManager) RetryRun(ctx context.Context, runId string) error {
 	if err != nil {
 		return util.NewInternalServerError(err, "Failed to retry run %s due to error updating entry", runId)
 	}
+
+	// Record the retry attempt. Non-fatal: log and continue on failure.
+	attemptNumber, incErr := r.runStore.IncrementAttemptNumber(runId)
+	if incErr != nil {
+		glog.Warningf("RetryRun: failed to increment attempt number for run %s: %v", runId, incErr)
+	} else {
+		attempt := &model.RunRetryAttempt{
+			RunUUID:       runId,
+			AttemptNumber: attemptNumber,
+			TriggeredAt:   time.Now().Unix(),
+			TriggeredBy:   userFromContext(ctx),
+		}
+		if createErr := r.runStore.CreateRetryAttempt(attempt); createErr != nil {
+			glog.Warningf("RetryRun: failed to record retry attempt for run %s: %v", runId, createErr)
+		}
+	}
 	return nil
+}
+
+// userFromContext extracts the Kubeflow user identity from gRPC incoming metadata.
+// Returns an empty string in single-user mode or when the header is absent.
+func userFromContext(ctx context.Context) string {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return ""
+	}
+	header := strings.ToLower(common.GetKubeflowUserIDHeader())
+	values := md[header]
+	if len(values) == 0 {
+		return ""
+	}
+	return strings.TrimPrefix(values[0], common.GetKubeflowUserIDPrefix())
 }
 
 // Fetches execution logs and writes to the destination.
@@ -1497,11 +1533,26 @@ func (r *ResourceManager) ReportWorkflowResource(ctx context.Context, execSpec u
 	// If run already exists, simply update it
 	run, updateError := r.GetRun(runId)
 	if updateError == nil {
+		previousState := run.RunDetails.State
 		run.State = state
 		run.FinishedAtInSec = execStatus.FinishedAt()
 		run.WorkflowRuntimeManifest = model.LargeText(execSpec.ToStringForStore())
 		if updateError = r.runStore.UpdateRun(run); updateError != nil {
 			return nil, util.Wrapf(updateError, "Failed to report a workflow for existing run %s during updating the run. Check if the run entry is corrupted", runId)
+		}
+		// Update retry attempt tracking (non-fatal).
+		if run.RunDetails.CurrentAttemptNumber > 0 {
+			attemptNum := run.RunDetails.CurrentAttemptNumber
+			if previousState != model.RuntimeStateRunning && state == model.RuntimeStateRunning {
+				if startErr := r.runStore.UpdateRetryAttemptStarted(runId, attemptNum, time.Now().Unix()); startErr != nil {
+					glog.Warningf("ReportWorkflowResource: failed to record started_at for run %s attempt %d: %v", runId, attemptNum, startErr)
+				}
+			}
+			if execStatus.IsInFinalState() {
+				if finErr := r.runStore.UpdateRetryAttemptFinished(runId, attemptNum, state.ToString(), execStatus.FinishedAt()); finErr != nil {
+					glog.Warningf("ReportWorkflowResource: failed to record finished state for run %s attempt %d: %v", runId, attemptNum, finErr)
+				}
+			}
 		}
 		if execStatus.IsInFinalState() {
 			if releaseError := r.releaseRunQuota(runId); releaseError != nil {

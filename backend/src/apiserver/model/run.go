@@ -313,6 +313,8 @@ type RunDetails struct {
 	State              RuntimeState     `gorm:"column:State; default:null; index:experimentuuid_state_finishedatinsec,priority:2;index:namespace_state_finishedatinsec,priority:2"`
 	StateHistoryString LargeText        `gorm:"column:StateHistory; default:null;"`
 	StateHistory       []*RuntimeStatus `gorm:"-;"`
+	// Incremented on each RetryRun call. 0 means the run has never been retried.
+	CurrentAttemptNumber int `gorm:"column:CurrentAttemptNumber; default:0"`
 	// Serialized runtime details of a run in v2beta1
 	PipelineRuntimeManifest LargeText `gorm:"column:PipelineRuntimeManifest; not null;"`
 	// Serialized Argo CRD in v1beta1

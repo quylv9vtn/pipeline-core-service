@@ -45,6 +45,9 @@ type RunMetadataReader interface {
 	GetExecutionsByContext(ctx context.Context, contextID int64) ([]*pb.Execution, error)
 	GetExecutionTypes(ctx context.Context, typeIds []int64) ([]*pb.ExecutionType, error)
 	GetEventsByExecutionIDs(ctx context.Context, executionIds []int64) ([]*pb.Event, error)
+	// ListAllArtifacts returns a page of all artifacts from MLMD using native
+	// MLMD pagination. nextPageToken is empty when there are no more pages.
+	ListAllArtifacts(ctx context.Context, pageSize int32, pageToken string) (artifacts []*pb.Artifact, nextPageToken string, err error)
 }
 
 const (

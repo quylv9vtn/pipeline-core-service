@@ -46,7 +46,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	apiv2beta1 "github.com/kubeflow/pipelines/backend/api/v2beta1/go_client"
+	"github.com/kubeflow/pipelines/backend/src/apiserver/filter"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/list"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/model"
 	"google.golang.org/grpc/codes"
@@ -274,6 +277,106 @@ func (s *RunServer) ListExecutionsHttpHandler(gatewayMux *runtime.ServeMux) http
 			NextPageToken: nextPageToken,
 		}
 		writeListExecutionsJSON(w, resp)
+	}
+}
+
+// GetExecutionHttpHandler serves GET /apis/v2beta1/executions/{execution_id}.
+func (s *RunServer) GetExecutionHttpHandler(gatewayMux *runtime.ServeMux) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		idStr := mux.Vars(r)["execution_id"]
+		executionID, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil || executionID <= 0 {
+			writeListExecutionsError(w, gatewayMux, r,
+				status.Errorf(codes.InvalidArgument, "invalid execution_id %q", idStr))
+			return
+		}
+
+		reader, err := s.metadataReader()
+		if err != nil {
+			writeListExecutionsError(w, gatewayMux, r, err)
+			return
+		}
+
+		mlmdCtx, cancel := context.WithTimeout(ctx, listExecutionsMlmdTimeout)
+		defer cancel()
+
+		mlmdExecutions, err := reader.GetExecutions(mlmdCtx, []int64{executionID})
+		if err != nil {
+			writeListExecutionsError(w, gatewayMux, r, err)
+			return
+		}
+		if len(mlmdExecutions) == 0 || mlmdExecutions[0] == nil {
+			writeListExecutionsError(w, gatewayMux, r,
+				status.Errorf(codes.NotFound, "execution %d not found", executionID))
+			return
+		}
+		ex := mlmdExecutions[0]
+
+		// Resolve type name.
+		typeName := ex.GetType()
+		if typeName == "" && ex.GetTypeId() > 0 {
+			if executionTypes, typeErr := reader.GetExecutionTypes(mlmdCtx, []int64{ex.GetTypeId()}); typeErr == nil && len(executionTypes) > 0 {
+				typeName = executionTypes[0].GetName()
+			}
+		}
+
+		// Look up the task row for run_id / task_id enrichment.
+		runIDForItem, taskID, podName := "", "", executionPodName(ex)
+		taskFilter, filterErr := filter.New(&apiv2beta1.Filter{
+			Predicates: []*apiv2beta1.Predicate{{
+				Key:       "execution_id",
+				Operation: apiv2beta1.Predicate_EQUALS,
+				Value:     &apiv2beta1.Predicate_StringValue{StringValue: idStr},
+			}},
+		})
+		if filterErr == nil {
+			if taskOpts, optErr := list.NewOptions(&model.Task{}, 1, "CreatedTimestamp", taskFilter); optErr == nil {
+				if tasks, _, _, listErr := s.resourceManager.ListTasks(nil, taskOpts); listErr == nil && len(tasks) > 0 {
+					t := tasks[0]
+					runIDForItem = t.RunID
+					taskID = t.UUID
+					if t.PodName != "" {
+						podName = t.PodName
+					}
+				}
+			}
+		}
+
+		item := executionItem{
+			RunID:       runIDForItem,
+			ExecutionID: ex.GetId(),
+			TypeID:      ex.GetTypeId(),
+			TypeName:    typeName,
+			Name:        ex.GetName(),
+			ExternalID:  ex.GetExternalId(),
+			State:       ex.GetLastKnownState().String(),
+			TaskID:      taskID,
+			PodName:     podName,
+		}
+		if ts := ex.GetCreateTimeSinceEpoch(); ts > 0 {
+			item.CreatedAt = &ts
+		}
+		if ts := ex.GetLastUpdateTimeSinceEpoch(); ts > 0 {
+			item.LastUpdatedAt = &ts
+		}
+		if props := ex.GetProperties(); len(props) > 0 {
+			if st := mlmdValuesToStruct(props); st != nil {
+				if b, marshalErr := protojson.Marshal(st); marshalErr == nil {
+					item.Properties = b
+				}
+			}
+		}
+		if custom := ex.GetCustomProperties(); len(custom) > 0 {
+			if st := mlmdValuesToStruct(custom); st != nil {
+				if b, marshalErr := protojson.Marshal(st); marshalErr == nil {
+					item.CustomProperties = b
+				}
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(item)
 	}
 }
 

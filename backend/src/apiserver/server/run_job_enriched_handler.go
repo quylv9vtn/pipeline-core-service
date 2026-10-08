@@ -28,11 +28,13 @@ package server
 // All name lookups are batched into a single DB round-trip per entity type.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/kubeflow/pipelines/backend/src/apiserver/common"
@@ -74,6 +76,7 @@ type enrichableRM interface {
 	GetPipelineDisplayNames(ids []string) (map[string]string, error)
 	GetPipelineVersionDisplayNames(ids []string) (map[string]string, error)
 	GetExperimentDisplayNames(ids []string) (map[string]string, error)
+	ListRetryAttempts(runId string) ([]*model.RunRetryAttempt, error)
 }
 
 // unique returns a deduplicated, non-empty slice of strings.
@@ -147,13 +150,47 @@ func writeEnrichedJSON(w http.ResponseWriter, payload []byte) {
 	_, _ = w.Write(payload)
 }
 
+// retryAttemptResponse is the JSON shape for a single retry attempt.
+type retryAttemptResponse struct {
+	AttemptNumber int    `json:"attempt_number"`
+	TriggeredAt   string `json:"triggered_at"`
+	TriggeredBy   string `json:"triggered_by"`
+	StartedAt     string `json:"started_at,omitempty"`
+	FinishedAt    string `json:"finished_at,omitempty"`
+	FinalState    string `json:"final_state,omitempty"`
+	// Duration in seconds (finished_at - started_at). 0 if either is not set.
+	Duration int64 `json:"duration"`
+}
+
+func toRetryAttemptResponse(a *model.RunRetryAttempt) retryAttemptResponse {
+	r := retryAttemptResponse{
+		AttemptNumber: a.AttemptNumber,
+		TriggeredBy:   a.TriggeredBy,
+		FinalState:    a.FinalState,
+	}
+	if a.TriggeredAt != 0 {
+		r.TriggeredAt = time.Unix(a.TriggeredAt, 0).UTC().Format(time.RFC3339)
+	}
+	if a.StartedAt != 0 {
+		r.StartedAt = time.Unix(a.StartedAt, 0).UTC().Format(time.RFC3339)
+	}
+	if a.FinishedAt != 0 {
+		r.FinishedAt = time.Unix(a.FinishedAt, 0).UTC().Format(time.RFC3339)
+	}
+	if a.StartedAt != 0 && a.FinishedAt != 0 {
+		r.Duration = a.FinishedAt - a.StartedAt
+	}
+	return r
+}
+
 // ---- Run handlers ----
 
 // GetRunHttpHandler serves GET /apis/v2beta1/runs/{run_id}.
-// Adds pipeline/version/experiment display names and duration to the response.
+// Adds pipeline/version/experiment display names, duration, retry_attempts and artifacts to the response.
 func (s *RunServer) GetRunHttpHandler(gatewayMux *runtime.ServeMux) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		run, err := s.getRun(r.Context(), mux.Vars(r)["run_id"])
+		runId := mux.Vars(r)["run_id"]
+		run, err := s.getRun(r.Context(), runId)
 		if err != nil {
 			writeRunMetadataHttpError(r.Context(), gatewayMux, w, r, err)
 			return
@@ -170,6 +207,33 @@ func (s *RunServer) GetRunHttpHandler(gatewayMux *runtime.ServeMux) http.Handler
 		}
 
 		payload, err := injectRunExtras(run, em)
+		if err != nil {
+			http.Error(w, `{"code":13,"message":"failed to marshal response"}`, http.StatusInternalServerError)
+			return
+		}
+
+		var m map[string]interface{}
+		if err := json.Unmarshal(payload, &m); err != nil {
+			http.Error(w, `{"code":13,"message":"failed to marshal response"}`, http.StatusInternalServerError)
+			return
+		}
+
+		// Inject retry_attempts.
+		attempts, err := s.resourceManager.ListRetryAttempts(runId)
+		if err != nil {
+			http.Error(w, `{"code":13,"message":"failed to fetch retry attempts"}`, http.StatusInternalServerError)
+			return
+		}
+		retryResponses := make([]retryAttemptResponse, len(attempts))
+		for i, a := range attempts {
+			retryResponses[i] = toRetryAttemptResponse(a)
+		}
+		m["retry_attempts"] = retryResponses
+
+		// Inject artifacts from MLMD. Non-fatal: if MLMD is unavailable, return empty list.
+		m["artifacts"] = buildArtifactList(s, r.Context(), runId, run.RunDetails.TaskDetails)
+
+		payload, err = json.Marshal(m)
 		if err != nil {
 			http.Error(w, `{"code":13,"message":"failed to marshal response"}`, http.StatusInternalServerError)
 			return
@@ -349,5 +413,57 @@ func writeListResponse(w http.ResponseWriter, itemKey string, items []json.RawMe
 	writeEnrichedJSON(w, payload)
 }
 
-// Ensure time import is used (for potential future use).
+// ---- artifact helpers ----
+
+// artifactUsageResponse describes how an artifact is used by a step.
+type artifactUsageResponse struct {
+	TaskID    string `json:"task_id"`
+	Key       string `json:"key"`
+	EventType string `json:"event_type"`
+}
+
+// artifactResponse is the slim artifact shape injected into GET /runs/{run_id}.
+type artifactResponse struct {
+	ArtifactID int64                   `json:"artifact_id"`
+	Name       string                  `json:"name"`
+	TypeName   string                  `json:"type_name"`
+	URI        string                  `json:"uri"`
+	State      string                  `json:"state"`
+	// Usages lists every step that produced or consumed this artifact.
+	Usages []artifactUsageResponse `json:"usages"`
+}
+
+// buildArtifactList fetches run artifacts from MLMD and returns a slice ready
+// for JSON marshaling. On any error (e.g. MLMD unavailable) it logs a warning
+// and returns an empty slice so the rest of the run response is unaffected.
+func buildArtifactList(s *RunServer, ctx context.Context, runId string, tasks []*model.Task) []artifactResponse {
+	snapshot, err := s.loadRunMetadata(ctx, runId, tasks)
+	if err != nil {
+		glog.Warningf("buildArtifactList: failed to load MLMD metadata for run %s: %v", runId, err)
+		return []artifactResponse{}
+	}
+	sorted := sortedRunArtifacts(snapshot.artifacts)
+	result := make([]artifactResponse, 0, len(sorted))
+	for _, a := range sorted {
+		usages := make([]artifactUsageResponse, 0, len(a.GetUsages()))
+		for _, u := range a.GetUsages() {
+			usages = append(usages, artifactUsageResponse{
+				TaskID:    u.GetTaskId(),
+				Key:       u.GetKey(),
+				EventType: u.GetEventType(),
+			})
+		}
+		result = append(result, artifactResponse{
+			ArtifactID: a.GetArtifactId(),
+			Name:       a.GetName(),
+			TypeName:   a.GetTypeName(),
+			URI:        a.GetUri(),
+			State:      a.GetState(),
+			Usages:     usages,
+		})
+	}
+	return result
+}
+
+// Ensure time import is used.
 var _ = time.Second

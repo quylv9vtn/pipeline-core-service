@@ -587,6 +587,7 @@ func autoMigrate(db *gorm.DB) error {
 		&model.PipelineVersion{},
 		&model.Job{},
 		&model.Run{},
+		&model.RunRetryAttempt{},
 		&model.Task{},
 		&model.QuotaLimit{},
 		&model.QuotaAllocation{},

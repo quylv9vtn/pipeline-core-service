@@ -1086,6 +1086,19 @@ func (c *Client) GetArtifactName(ctx context.Context, artifactId int64) (string,
 	return getArtifactName(event.Path)
 }
 
+// ListAllArtifacts returns a page of all artifacts using MLMD native pagination.
+func (c *Client) ListAllArtifacts(ctx context.Context, pageSize int32, pageToken string) ([]*pb.Artifact, string, error) {
+	opts := &pb.ListOperationOptions{MaxResultSize: &pageSize}
+	if pageToken != "" {
+		opts.NextPageToken = &pageToken
+	}
+	res, err := c.svc.GetArtifacts(ctx, &pb.GetArtifactsRequest{Options: opts})
+	if err != nil {
+		return nil, "", err
+	}
+	return res.GetArtifacts(), res.GetNextPageToken(), nil
+}
+
 // GetArtifacts ...
 func (c *Client) GetArtifacts(ctx context.Context, ids []int64) ([]*pb.Artifact, error) {
 	req := &pb.GetArtifactsByIDRequest{ArtifactIds: ids}

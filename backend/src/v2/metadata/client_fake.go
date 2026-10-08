@@ -97,6 +97,10 @@ func (c *FakeClient) GetArtifacts(ctx context.Context, ids []int64) ([]*pb.Artif
 	return nil, nil
 }
 
+func (c *FakeClient) ListAllArtifacts(ctx context.Context, pageSize int32, pageToken string) ([]*pb.Artifact, string, error) {
+	return nil, "", nil
+}
+
 func (c *FakeClient) GetOutputArtifactsByExecutionId(ctx context.Context, executionId int64) (map[string]*OutputArtifact, error) {
 	return nil, nil
 }

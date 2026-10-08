@@ -422,11 +422,15 @@ func startHTTPProxy(resourceManager *resource.ResourceManager, metadataClient *m
 	topMux.HandleFunc("/apis/v2beta1/pipelines/versions/delete", pipelineListServer.BatchDeletePipelineVersionsHttpHandler).Methods(http.MethodPost)
 	topMux.HandleFunc("/apis/v2beta1/executions", runMetadataServer.ListExecutionsHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/runs", runMetadataServer.ListRunsHttpHandler(runtimeMux)).Methods(http.MethodGet)
+	topMux.HandleFunc("/apis/v2beta1/runs/compare", runMetadataServer.CompareRunsHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/runs/{run_id}", runMetadataServer.GetRunHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/recurringruns", jobListServer.ListRecurringRunsHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/recurringruns/{recurring_run_id}", jobListServer.GetRecurringRunHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/runs/{run_id}/tasks", runMetadataServer.ListRunTasksHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/runs/{run_id}/executions", runMetadataServer.ListRunExecutionsHttpHandler(runtimeMux)).Methods(http.MethodGet)
+	topMux.HandleFunc("/apis/v2beta1/artifacts", runMetadataServer.ListArtifactsHttpHandler(runtimeMux)).Methods(http.MethodGet)
+	topMux.HandleFunc("/apis/v2beta1/artifacts/{artifact_id}", runMetadataServer.GetArtifactHttpHandler(runtimeMux)).Methods(http.MethodGet)
+	topMux.HandleFunc("/apis/v2beta1/executions/{execution_id}", runMetadataServer.GetExecutionHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/experiments", experimentListServer.ListExperimentsHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/pipelines", pipelineListServer.ListPipelinesHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/pipelines/{pipeline_id}", pipelineListServer.GetPipelineHttpHandler(runtimeMux)).Methods(http.MethodGet)
@@ -442,6 +446,18 @@ func startHTTPProxy(resourceManager *resource.ResourceManager, metadataClient *m
 	topMux.HandleFunc("/apis/v2beta1/recurringruns/{recurring_run_id}", jobListServer.DeleteRecurringRunHttpHandler(runtimeMux)).Methods(http.MethodDelete)
 	// Experiment delete: no cascade, rejects if jobs or runs still reference it.
 	topMux.HandleFunc("/apis/v2beta1/experiments/{experiment_id}", experimentListServer.DeleteExperimentHttpHandler(runtimeMux)).Methods(http.MethodDelete)
+
+	// Action aliases: accept /{action} in addition to the gRPC-gateway :{action} convention.
+	// e.g. POST /runs/{id}/retry  →  POST /runs/{id}:retry  →  runtimeMux
+	for _, act := range []string{"retry", "terminate", "archive", "unarchive"} {
+		topMux.HandleFunc("/apis/v2beta1/runs/{run_id}/"+act, actionAlias(runtimeMux, act)).Methods(http.MethodPost)
+	}
+	for _, act := range []string{"enable", "disable"} {
+		topMux.HandleFunc("/apis/v2beta1/recurringruns/{recurring_run_id}/"+act, actionAlias(runtimeMux, act)).Methods(http.MethodPost)
+	}
+	for _, act := range []string{"archive", "unarchive"} {
+		topMux.HandleFunc("/apis/v2beta1/experiments/{experiment_id}/"+act, actionAlias(runtimeMux, act)).Methods(http.MethodPost)
+	}
 
 	topMux.PathPrefix("/apis/").Handler(runtimeMux)
 
@@ -605,6 +621,25 @@ func parseOptionalBool(s string) *bool {
 		return nil
 	}
 	return &v
+}
+
+// actionAlias returns a handler that rewrites the last path segment from
+// "/<action>" to ":<action>" then forwards to mux. This lets callers use
+// REST-friendly paths like POST /runs/{id}/retry instead of the gRPC-gateway
+// convention POST /runs/{id}:retry.
+func actionAlias(mux http.Handler, action string) http.HandlerFunc {
+	suffix := "/" + action
+	replacement := ":" + action
+	return func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, suffix) {
+			r2 := r.Clone(r.Context())
+			r2.URL.Path = r.URL.Path[:len(r.URL.Path)-len(suffix)] + replacement
+			r2.URL.RawPath = ""
+			mux.ServeHTTP(w, r2)
+			return
+		}
+		http.NotFound(w, r)
+	}
 }
 
 // getPVCSpec retrieves the default workspace PersistentVolumeClaimSpec from the config.

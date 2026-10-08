@@ -54,6 +54,7 @@ var runColumns = []string{
 	"StateHistory",
 	"PipelineContextId",
 	"PipelineRunContextId",
+	"CurrentAttemptNumber",
 }
 
 type RunStoreInterface interface {
@@ -92,6 +93,23 @@ type RunStoreInterface interface {
 
 	// CountRunsByExperiment returns the number of runs associated with the given experiment.
 	CountRunsByExperiment(experimentId string) (int, error)
+
+	// IncrementAttemptNumber atomically increments CurrentAttemptNumber for the
+	// given run and returns the new value.
+	IncrementAttemptNumber(runId string) (int, error)
+
+	// CreateRetryAttempt inserts a new row into run_retry_history.
+	CreateRetryAttempt(attempt *model.RunRetryAttempt) error
+
+	// UpdateRetryAttemptStarted sets StartedAt on the given attempt if StartedAt
+	// is still 0 (idempotent — only records the first RUNNING transition).
+	UpdateRetryAttemptStarted(runId string, attemptNumber int, startedAt int64) error
+
+	// UpdateRetryAttemptFinished sets FinalState and FinishedAt on the given attempt.
+	UpdateRetryAttemptFinished(runId string, attemptNumber int, finalState string, finishedAt int64) error
+
+	// ListRetryAttempts returns all retry attempts for a run, ordered by AttemptNumber ascending.
+	ListRetryAttempts(runId string) ([]*model.RunRetryAttempt, error)
 }
 
 type RunStore struct {
@@ -282,6 +300,7 @@ func (s *RunStore) scanRowsToRuns(rows *sql.Rows) ([]*model.Run, error) {
 			workflowRuntimeManifest string
 		var createdAtInSec, scheduledAtInSec, finishedAtInSec, pipelineContextId, pipelineRunContextId sql.NullInt64
 		var tasksInString, runtimeParameters, pipelineRoot, jobId, state, stateHistory, pipelineVersionId sql.NullString
+		var currentAttemptNumber sql.NullInt64
 		err := rows.Scan(
 			&uuid,
 			&experimentUUID,
@@ -308,6 +327,7 @@ func (s *RunStore) scanRowsToRuns(rows *sql.Rows) ([]*model.Run, error) {
 			&stateHistory,
 			&pipelineContextId,
 			&pipelineRunContextId,
+			&currentAttemptNumber,
 			&tasksInString,
 		)
 		if err != nil {
@@ -346,6 +366,7 @@ func (s *RunStore) scanRowsToRuns(rows *sql.Rows) ([]*model.Run, error) {
 				PipelineRunContextId:    pipelineRunContextId.Int64,
 				TaskDetails:             tasks,
 				StateHistory:            stateHistoryNew,
+				CurrentAttemptNumber:    int(currentAttemptNumber.Int64),
 			},
 			PipelineSpec: model.PipelineSpec{
 				PipelineId:           pipelineId,
@@ -675,4 +696,126 @@ func (s *RunStore) TerminateRun(runId string) error {
 		return util.NewInvalidInputError("Failed to terminate a run %s. Row not found", runId)
 	}
 	return nil
+}
+
+// ---- retry attempt methods ----
+
+// IncrementAttemptNumber atomically increments CurrentAttemptNumber and returns the new value.
+func (s *RunStore) IncrementAttemptNumber(runId string) (int, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return 0, util.NewInternalServerError(err, "Failed to begin transaction for IncrementAttemptNumber")
+	}
+	updateSQL, args, err := sq.
+		Update("run_details").
+		Set("CurrentAttemptNumber", sq.Expr("CurrentAttemptNumber + 1")).
+		Where(sq.Eq{"UUID": runId}).
+		ToSql()
+	if err != nil {
+		tx.Rollback()
+		return 0, util.NewInternalServerError(err, "Failed to build IncrementAttemptNumber query")
+	}
+	if _, err = tx.Exec(s.db.Rebind(updateSQL), args...); err != nil {
+		tx.Rollback()
+		return 0, util.NewInternalServerError(err, "Failed to increment attempt number for run %s", runId)
+	}
+	selectSQL, args2, err := sq.Select("CurrentAttemptNumber").From("run_details").Where(sq.Eq{"UUID": runId}).ToSql()
+	if err != nil {
+		tx.Rollback()
+		return 0, util.NewInternalServerError(err, "Failed to build select query for attempt number")
+	}
+	var n int
+	if err = tx.QueryRow(s.db.Rebind(selectSQL), args2...).Scan(&n); err != nil {
+		tx.Rollback()
+		return 0, util.NewInternalServerError(err, "Failed to read new attempt number for run %s", runId)
+	}
+	if err = tx.Commit(); err != nil {
+		return 0, util.NewInternalServerError(err, "Failed to commit IncrementAttemptNumber for run %s", runId)
+	}
+	return n, nil
+}
+
+// CreateRetryAttempt inserts a new row into run_retry_history.
+func (s *RunStore) CreateRetryAttempt(attempt *model.RunRetryAttempt) error {
+	sql, args, err := sq.
+		Insert("run_retry_history").
+		SetMap(sq.Eq{
+			"RunUUID":       attempt.RunUUID,
+			"AttemptNumber": attempt.AttemptNumber,
+			"TriggeredAt":   attempt.TriggeredAt,
+			"TriggeredBy":   attempt.TriggeredBy,
+			"StartedAt":     0,
+			"FinishedAt":    0,
+			"FinalState":    "",
+		}).ToSql()
+	if err != nil {
+		return util.NewInternalServerError(err, "Failed to build insert for retry attempt")
+	}
+	if _, err = s.db.Exec(s.db.Rebind(sql), args...); err != nil {
+		return util.NewInternalServerError(err, "Failed to insert retry attempt for run %s attempt %d", attempt.RunUUID, attempt.AttemptNumber)
+	}
+	return nil
+}
+
+// UpdateRetryAttemptStarted sets StartedAt only when it is still 0 (first RUNNING transition).
+func (s *RunStore) UpdateRetryAttemptStarted(runId string, attemptNumber int, startedAt int64) error {
+	sql, args, err := sq.
+		Update("run_retry_history").
+		Set("StartedAt", startedAt).
+		Where(sq.Eq{"RunUUID": runId, "AttemptNumber": attemptNumber}).
+		Where("StartedAt = 0").
+		ToSql()
+	if err != nil {
+		return util.NewInternalServerError(err, "Failed to build UpdateRetryAttemptStarted query")
+	}
+	if _, err = s.db.Exec(s.db.Rebind(sql), args...); err != nil {
+		return util.NewInternalServerError(err, "Failed to update StartedAt for run %s attempt %d", runId, attemptNumber)
+	}
+	return nil
+}
+
+// UpdateRetryAttemptFinished records the terminal state and finished timestamp.
+func (s *RunStore) UpdateRetryAttemptFinished(runId string, attemptNumber int, finalState string, finishedAt int64) error {
+	sql, args, err := sq.
+		Update("run_retry_history").
+		SetMap(sq.Eq{
+			"FinalState": finalState,
+			"FinishedAt": finishedAt,
+		}).
+		Where(sq.Eq{"RunUUID": runId, "AttemptNumber": attemptNumber}).
+		ToSql()
+	if err != nil {
+		return util.NewInternalServerError(err, "Failed to build UpdateRetryAttemptFinished query")
+	}
+	if _, err = s.db.Exec(s.db.Rebind(sql), args...); err != nil {
+		return util.NewInternalServerError(err, "Failed to update finished state for run %s attempt %d", runId, attemptNumber)
+	}
+	return nil
+}
+
+// ListRetryAttempts returns all retry attempts for a run ordered by AttemptNumber.
+func (s *RunStore) ListRetryAttempts(runId string) ([]*model.RunRetryAttempt, error) {
+	sql, args, err := sq.
+		Select("ID", "RunUUID", "AttemptNumber", "TriggeredAt", "TriggeredBy", "StartedAt", "FinishedAt", "FinalState").
+		From("run_retry_history").
+		Where(sq.Eq{"RunUUID": runId}).
+		OrderBy("AttemptNumber ASC").
+		ToSql()
+	if err != nil {
+		return nil, util.NewInternalServerError(err, "Failed to build ListRetryAttempts query")
+	}
+	rows, err := s.db.Query(s.db.Rebind(sql), args...)
+	if err != nil {
+		return nil, util.NewInternalServerError(err, "Failed to list retry attempts for run %s", runId)
+	}
+	defer rows.Close()
+	var attempts []*model.RunRetryAttempt
+	for rows.Next() {
+		a := &model.RunRetryAttempt{}
+		if err := rows.Scan(&a.ID, &a.RunUUID, &a.AttemptNumber, &a.TriggeredAt, &a.TriggeredBy, &a.StartedAt, &a.FinishedAt, &a.FinalState); err != nil {
+			return nil, util.NewInternalServerError(err, "Failed to scan retry attempt row for run %s", runId)
+		}
+		attempts = append(attempts, a)
+	}
+	return attempts, nil
 }
