@@ -247,7 +247,7 @@ func (s *RunServer) GetRunHttpHandler(gatewayMux *runtime.ServeMux) http.Handler
 // each run in the response.
 func (s *RunServer) ListRunsHttpHandler(gatewayMux *runtime.ServeMux) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		rewritten, err := rewriteShorthandFilters(r, "state", "display_name", "name")
+		rewritten, err := rewriteShorthandFilters(r, "state", "display_name", "name", "pipeline_version_id", "experiment_id")
 		if err != nil {
 			writeRunMetadataHttpError(r.Context(), gatewayMux, w, r, err)
 			return
