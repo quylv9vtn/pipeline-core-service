@@ -119,6 +119,18 @@ type PipelineStoreInterface interface {
 	// ListAllPipelineVersionIDsByPipeline returns the UUIDs of every version
 	// that belongs to the given pipeline (all statuses, no pagination).
 	ListAllPipelineVersionIDsByPipeline(pipelineId string) ([]string, error)
+
+	// CountVersionsForPipelines returns a map of pipeline_id → ready version
+	// count for each of the given pipeline IDs, fetched in a single query.
+	CountVersionsForPipelines(pipelineIds []string) (map[string]int, error)
+
+	// GetPipelineDisplayNames returns a map of pipeline_id → display_name for
+	// the given pipeline IDs, fetched in a single query.
+	GetPipelineDisplayNames(ids []string) (map[string]string, error)
+
+	// GetPipelineVersionDisplayNames returns a map of version_id → display_name
+	// for the given pipeline version IDs, fetched in a single query.
+	GetPipelineVersionDisplayNames(ids []string) (map[string]string, error)
 }
 
 type PipelineStore struct {
@@ -759,6 +771,91 @@ func (s *PipelineStore) UpdatePipelineVersionFields(pipelineVersionId, displayNa
 		return util.NewInternalServerError(err, "Failed to create query to update pipeline version %v", pipelineVersionId)
 	}
 	return s.ExecuteSQL(sql, args, "update", "pipeline version")
+}
+
+// GetPipelineDisplayNames returns a map of pipeline_id → display_name.
+func (s *PipelineStore) GetPipelineDisplayNames(ids []string) (map[string]string, error) {
+	names := make(map[string]string, len(ids))
+	if len(ids) == 0 {
+		return names, nil
+	}
+	sql, args, err := sq.Select("UUID", "DisplayName").From("pipelines").
+		Where(sq.Eq{"UUID": ids}).ToSql()
+	if err != nil {
+		return nil, util.NewInternalServerError(err, "Failed to build query for pipeline display names")
+	}
+	rows, err := s.db.Query(sql, args...)
+	if err != nil {
+		return nil, util.NewInternalServerError(err, "Failed to fetch pipeline display names")
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, util.NewInternalServerError(err, "Failed to scan pipeline display name")
+		}
+		names[id] = name
+	}
+	return names, nil
+}
+
+// GetPipelineVersionDisplayNames returns a map of version_id → display_name.
+func (s *PipelineStore) GetPipelineVersionDisplayNames(ids []string) (map[string]string, error) {
+	names := make(map[string]string, len(ids))
+	if len(ids) == 0 {
+		return names, nil
+	}
+	sql, args, err := sq.Select("UUID", "DisplayName").From("pipeline_versions").
+		Where(sq.Eq{"UUID": ids}).ToSql()
+	if err != nil {
+		return nil, util.NewInternalServerError(err, "Failed to build query for pipeline version display names")
+	}
+	rows, err := s.db.Query(sql, args...)
+	if err != nil {
+		return nil, util.NewInternalServerError(err, "Failed to fetch pipeline version display names")
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, util.NewInternalServerError(err, "Failed to scan pipeline version display name")
+		}
+		names[id] = name
+	}
+	return names, nil
+}
+
+// CountVersionsForPipelines returns a map of pipeline_id → ready version count
+// for each supplied pipeline ID, using a single GROUP BY query.
+func (s *PipelineStore) CountVersionsForPipelines(pipelineIds []string) (map[string]int, error) {
+	counts := make(map[string]int, len(pipelineIds))
+	if len(pipelineIds) == 0 {
+		return counts, nil
+	}
+	sql, args, err := sq.Select("PipelineId", "count(*) as cnt").
+		From("pipeline_versions").
+		Where(sq.And{
+			sq.Eq{"PipelineId": pipelineIds},
+			sq.Eq{"Status": model.PipelineVersionReady},
+		}).
+		GroupBy("PipelineId").ToSql()
+	if err != nil {
+		return nil, util.NewInternalServerError(err, "Failed to build query to count pipeline versions")
+	}
+	rows, err := s.db.Query(sql, args...)
+	if err != nil {
+		return nil, util.NewInternalServerError(err, "Failed to count pipeline versions")
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var pipelineId string
+		var cnt int
+		if scanErr := rows.Scan(&pipelineId, &cnt); scanErr != nil {
+			return nil, util.NewInternalServerError(scanErr, "Failed to scan pipeline version count")
+		}
+		counts[pipelineId] = cnt
+	}
+	return counts, nil
 }
 
 // ListAllPipelineVersionIDsByPipeline returns the UUIDs of all versions that

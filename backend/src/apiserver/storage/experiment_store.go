@@ -34,6 +34,10 @@ type ExperimentStoreInterface interface {
 	UnarchiveExperiment(expId string) error
 	DeleteExperiment(uuid string) error
 	SetLastRunTimestamp(run *model.Run) error
+
+	// GetExperimentDisplayNames returns a map of experiment_id → name for the
+	// given experiment IDs, fetched in a single query.
+	GetExperimentDisplayNames(ids []string) (map[string]string, error)
 }
 
 type ExperimentStore struct {
@@ -423,6 +427,32 @@ func (s *ExperimentStore) SetLastRunTimestamp(run *model.Run) error {
 			"Failed to set experiment LastRunCreatedAtInSec %s. error: '%v'", expId, err.Error())
 	}
 	return nil
+}
+
+// GetExperimentDisplayNames returns a map of experiment_id → name.
+func (s *ExperimentStore) GetExperimentDisplayNames(ids []string) (map[string]string, error) {
+	names := make(map[string]string, len(ids))
+	if len(ids) == 0 {
+		return names, nil
+	}
+	sql, args, err := sq.Select("UUID", "Name").From("experiments").
+		Where(sq.Eq{"UUID": ids}).ToSql()
+	if err != nil {
+		return nil, util.NewInternalServerError(err, "Failed to build query for experiment display names")
+	}
+	rows, err := s.db.Query(sql, args...)
+	if err != nil {
+		return nil, util.NewInternalServerError(err, "Failed to fetch experiment display names")
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, util.NewInternalServerError(err, "Failed to scan experiment display name")
+		}
+		names[id] = name
+	}
+	return names, nil
 }
 
 // factory function for experiment store.

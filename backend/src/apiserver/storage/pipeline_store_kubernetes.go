@@ -459,6 +459,30 @@ func (k *PipelineStoreKubernetes) ListAllPipelineVersionIDsByPipeline(pipelineId
 	)
 }
 
+// CountVersionsForPipelines is not supported for the Kubernetes-backed store.
+func (k *PipelineStoreKubernetes) CountVersionsForPipelines(pipelineIds []string) (map[string]int, error) {
+	return nil, util.NewInternalServerError(
+		util.NewInvalidInputError("CountVersionsForPipelines not supported for Kubernetes store"),
+		"Not implemented",
+	)
+}
+
+// GetPipelineDisplayNames is not supported for the Kubernetes-backed store.
+func (k *PipelineStoreKubernetes) GetPipelineDisplayNames(ids []string) (map[string]string, error) {
+	return nil, util.NewInternalServerError(
+		util.NewInvalidInputError("GetPipelineDisplayNames not supported for Kubernetes store"),
+		"Not implemented",
+	)
+}
+
+// GetPipelineVersionDisplayNames is not supported for the Kubernetes-backed store.
+func (k *PipelineStoreKubernetes) GetPipelineVersionDisplayNames(ids []string) (map[string]string, error) {
+	return nil, util.NewInternalServerError(
+		util.NewInvalidInputError("GetPipelineVersionDisplayNames not supported for Kubernetes store"),
+		"Not implemented",
+	)
+}
+
 func (k *PipelineStoreKubernetes) DeletePipelineVersion(pipelineVersionId string) error {
 	k8sPipelineVersion, err := k.getK8sPipelineVersion(context.TODO(), pipelineVersionId)
 	if err != nil {

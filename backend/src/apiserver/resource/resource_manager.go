@@ -551,6 +551,26 @@ func (r *ResourceManager) CountRunsByExperiment(experimentId string) (int, error
 	return r.runStore.CountRunsByExperiment(experimentId)
 }
 
+// CountVersionsForPipelines returns a map of pipeline_id → ready version count.
+func (r *ResourceManager) CountVersionsForPipelines(pipelineIds []string) (map[string]int, error) {
+	return r.pipelineStore.CountVersionsForPipelines(pipelineIds)
+}
+
+// GetPipelineDisplayNames returns a map of pipeline_id → display_name.
+func (r *ResourceManager) GetPipelineDisplayNames(ids []string) (map[string]string, error) {
+	return r.pipelineStore.GetPipelineDisplayNames(ids)
+}
+
+// GetPipelineVersionDisplayNames returns a map of version_id → display_name.
+func (r *ResourceManager) GetPipelineVersionDisplayNames(ids []string) (map[string]string, error) {
+	return r.pipelineStore.GetPipelineVersionDisplayNames(ids)
+}
+
+// GetExperimentDisplayNames returns a map of experiment_id → name.
+func (r *ResourceManager) GetExperimentDisplayNames(ids []string) (map[string]string, error) {
+	return r.experimentStore.GetExperimentDisplayNames(ids)
+}
+
 // ListAllPipelineVersionIDsByPipeline returns the UUIDs of all versions belonging to a pipeline.
 func (r *ResourceManager) ListAllPipelineVersionIDsByPipeline(pipelineId string) ([]string, error) {
 	return r.pipelineStore.ListAllPipelineVersionIDsByPipeline(pipelineId)
