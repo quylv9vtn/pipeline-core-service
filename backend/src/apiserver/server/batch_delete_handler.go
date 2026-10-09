@@ -15,10 +15,16 @@
 package server
 
 // BatchDeleteRunsHttpHandler serves POST /apis/v2beta1/runs/delete.
-// BatchDeletePipelineVersionsHttpHandler serves POST /apis/v2beta1/pipelines/versions:batchDelete.
+// BatchDeletePipelineVersionsHttpHandler serves POST /apis/v2beta1/pipelines/versions/delete.
+// BatchDeletePipelinesHttpHandler serves POST /apis/v2beta1/pipelines/delete.
 //
-// Both handlers process items concurrently and return partial results — HTTP 200
+// All handlers process items concurrently and return partial results — HTTP 200
 // always; failed items are listed in the errors array.
+//
+// Pipeline batch delete supports ?cascade=true: for each pipeline, every version
+// is deleted (along with all its runs) before the pipeline record itself is
+// removed. Without cascade, a pipeline that still has versions is reported as
+// an error and left untouched.
 //
 // Pipeline version batch delete supports ?cascade=true: for each version, all
 // associated runs are deleted before the version itself is removed. Without
@@ -99,6 +105,141 @@ func (s *RunServer) BatchDeleteRunsHttpHandler(w http.ResponseWriter, r *http.Re
 					runCount.Dec()
 				}
 			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// --- Batch delete pipelines ---
+
+type batchDeletePipelinesRequest struct {
+	PipelineIDs []string `json:"pipeline_ids"`
+}
+
+type batchDeletePipelineError struct {
+	PipelineID string `json:"pipeline_id"`
+	Error      string `json:"error"`
+}
+
+type batchDeletePipelinesResponse struct {
+	DeletedPipelineIDs []string                   `json:"deleted_pipeline_ids"`
+	Errors             []batchDeletePipelineError `json:"errors,omitempty"`
+}
+
+// BatchDeletePipelinesHttpHandler serves POST /apis/v2beta1/pipelines/delete.
+//
+// With ?cascade=true every version (and its runs) is deleted before the
+// pipeline itself is removed. Without cascade, a pipeline that still has
+// versions is reported as an error and left untouched.
+// Successfully deleted IDs are in deleted_pipeline_ids.
+func (s *PipelineServer) BatchDeletePipelinesHttpHandler(w http.ResponseWriter, r *http.Request) {
+	cascade := strings.EqualFold(r.URL.Query().Get("cascade"), "true")
+
+	var req batchDeletePipelinesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "invalid JSON body: " + err.Error()})
+		return
+	}
+	if len(req.PipelineIDs) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "pipeline_ids must contain at least one ID"})
+		return
+	}
+
+	type result struct {
+		id  string
+		err error
+	}
+	resultCh := make(chan result, len(req.PipelineIDs))
+
+	var wg sync.WaitGroup
+	for _, id := range req.PipelineIDs {
+		wg.Add(1)
+		go func(pipelineID string) {
+			defer wg.Done()
+
+			// List all version IDs for this pipeline.
+			versionIDs, err := s.resourceManager.ListAllPipelineVersionIDsByPipeline(pipelineID)
+			if err != nil {
+				resultCh <- result{id: pipelineID, err: fmt.Errorf("failed to list versions: %w", err)}
+				return
+			}
+
+			if len(versionIDs) > 0 {
+				if !cascade {
+					resultCh <- result{id: pipelineID, err: fmt.Errorf(
+						"pipeline has %d version(s); retry with ?cascade=true to delete them along with all associated runs",
+						len(versionIDs))}
+					return
+				}
+
+				// Cascade: delete runs then version for each version concurrently.
+				type versionErr struct {
+					vid string
+					err error
+				}
+				vErrCh := make(chan versionErr, len(versionIDs))
+				var vWg sync.WaitGroup
+				for _, vid := range versionIDs {
+					vWg.Add(1)
+					go func(versionID string) {
+						defer vWg.Done()
+						runIDs, listErr := s.resourceManager.ListRunIDsByPipelineVersion(versionID)
+						if listErr != nil {
+							vErrCh <- versionErr{versionID, fmt.Errorf("list runs: %w", listErr)}
+							return
+						}
+						if len(runIDs) > 0 {
+							if runErrs := deleteRunsConcurrently(r, s.resourceManager, runIDs); len(runErrs) > 0 {
+								vErrCh <- versionErr{versionID, fmt.Errorf("delete runs: %v", runErrs)}
+								return
+							}
+						}
+						if delErr := s.resourceManager.DeletePipelineVersion(versionID); delErr != nil {
+							vErrCh <- versionErr{versionID, fmt.Errorf("delete version: %w", delErr)}
+						}
+					}(vid)
+				}
+				vWg.Wait()
+				close(vErrCh)
+
+				var vErrs []string
+				for ve := range vErrCh {
+					vErrs = append(vErrs, fmt.Sprintf("version %s: %v", ve.vid, ve.err))
+				}
+				if len(vErrs) > 0 {
+					resultCh <- result{id: pipelineID, err: fmt.Errorf("cascade delete failed: %s", strings.Join(vErrs, "; "))}
+					return
+				}
+			}
+
+			// Delete the pipeline itself (versions already gone, cascade=false is safe).
+			if err := s.resourceManager.DeletePipeline(pipelineID, false); err != nil {
+				resultCh <- result{id: pipelineID, err: err}
+				return
+			}
+			resultCh <- result{id: pipelineID}
+		}(id)
+	}
+	wg.Wait()
+	close(resultCh)
+
+	resp := batchDeletePipelinesResponse{
+		DeletedPipelineIDs: []string{},
+	}
+	for res := range resultCh {
+		if res.err != nil {
+			resp.Errors = append(resp.Errors, batchDeletePipelineError{
+				PipelineID: res.id,
+				Error:      res.err.Error(),
+			})
+		} else {
+			resp.DeletedPipelineIDs = append(resp.DeletedPipelineIDs, res.id)
 		}
 	}
 

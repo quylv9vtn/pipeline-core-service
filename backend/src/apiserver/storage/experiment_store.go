@@ -38,6 +38,10 @@ type ExperimentStoreInterface interface {
 	// GetExperimentDisplayNames returns a map of experiment_id → name for the
 	// given experiment IDs, fetched in a single query.
 	GetExperimentDisplayNames(ids []string) (map[string]string, error)
+
+	// UpdateExperimentFields updates the display_name (Name) and description of
+	// an experiment.
+	UpdateExperimentFields(id, displayName, description string) error
 }
 
 type ExperimentStore struct {
@@ -302,6 +306,25 @@ func (s *ExperimentStore) DeleteExperiment(id string) error {
 	err = tx.Commit()
 	if err != nil {
 		return util.NewInternalServerError(err, "Failed to delete experiment %v and its resource references from table", id)
+	}
+	return nil
+}
+
+func (s *ExperimentStore) UpdateExperimentFields(id, displayName, description string) error {
+	sql, args, err := sq.
+		Update("experiments").
+		SetMap(sq.Eq{
+			"Name":        displayName,
+			"Description": description,
+		}).
+		Where(sq.Eq{"UUID": id}).
+		ToSql()
+	if err != nil {
+		return util.NewInternalServerError(err, "Failed to create query to update experiment %v", id)
+	}
+	_, err = s.db.Exec(sql, args...)
+	if err != nil {
+		return util.NewInternalServerError(err, "Failed to update experiment %v", id)
 	}
 	return nil
 }

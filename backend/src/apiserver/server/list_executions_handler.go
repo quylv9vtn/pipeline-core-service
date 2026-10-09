@@ -63,23 +63,41 @@ const (
 	listExecutionsMlmdTimeout     = 15 * time.Second
 )
 
-// executionItem is the per-execution element of the list response. It embeds
-// the proto-style fields directly (as plain JSON types) so we can add run_id
-// without modifying the RunExecution proto.
-type executionItem struct {
-	RunID            string          `json:"run_id,omitempty"`
-	ExecutionID      int64           `json:"execution_id,omitempty"`
+// executionArtifact represents an artifact linked to an execution via an MLMD event.
+type executionArtifact struct {
+	ArtifactID       int64           `json:"artifact_id"`
 	TypeID           int64           `json:"type_id,omitempty"`
 	TypeName         string          `json:"type_name,omitempty"`
 	Name             string          `json:"name,omitempty"`
+	URI              string          `json:"uri,omitempty"`
 	ExternalID       string          `json:"external_id,omitempty"`
 	State            string          `json:"state,omitempty"`
-	TaskID           string          `json:"task_id,omitempty"`
-	PodName          string          `json:"pod_name,omitempty"`
+	Key              string          `json:"key,omitempty"`
 	CreatedAt        *int64          `json:"created_at_ms,omitempty"`
 	LastUpdatedAt    *int64          `json:"last_updated_at_ms,omitempty"`
 	Properties       json.RawMessage `json:"properties,omitempty"`
 	CustomProperties json.RawMessage `json:"custom_properties,omitempty"`
+}
+
+// executionItem is the per-execution element of the list response. It embeds
+// the proto-style fields directly (as plain JSON types) so we can add run_id
+// without modifying the RunExecution proto.
+type executionItem struct {
+	RunID            string              `json:"run_id,omitempty"`
+	ExecutionID      int64               `json:"execution_id,omitempty"`
+	TypeID           int64               `json:"type_id,omitempty"`
+	TypeName         string              `json:"type_name,omitempty"`
+	Name             string              `json:"name,omitempty"`
+	ExternalID       string              `json:"external_id,omitempty"`
+	State            string              `json:"state,omitempty"`
+	TaskID           string              `json:"task_id,omitempty"`
+	PodName          string              `json:"pod_name,omitempty"`
+	CreatedAt        *int64              `json:"created_at_ms,omitempty"`
+	LastUpdatedAt    *int64              `json:"last_updated_at_ms,omitempty"`
+	Properties       json.RawMessage     `json:"properties,omitempty"`
+	CustomProperties json.RawMessage     `json:"custom_properties,omitempty"`
+	InputArtifacts   []executionArtifact `json:"input_artifacts,omitempty"`
+	OutputArtifacts  []executionArtifact `json:"output_artifacts,omitempty"`
 }
 
 type listExecutionsResponse struct {
@@ -127,7 +145,7 @@ func (s *RunServer) ListExecutionsHttpHandler(gatewayMux *runtime.ServeMux) http
 		if pageToken != "" {
 			opts, err = list.NewOptionsFromToken(pageToken, pageSize)
 		} else {
-			opts, err = list.NewOptions(&model.Task{}, pageSize, "CreatedTimestamp", nil)
+			opts, err = list.NewOptions(&model.Task{}, pageSize, "create_time", nil)
 		}
 		if err != nil {
 			writeListExecutionsError(w, gatewayMux, r,
@@ -331,7 +349,7 @@ func (s *RunServer) GetExecutionHttpHandler(gatewayMux *runtime.ServeMux) http.H
 			}},
 		})
 		if filterErr == nil {
-			if taskOpts, optErr := list.NewOptions(&model.Task{}, 1, "CreatedTimestamp", taskFilter); optErr == nil {
+			if taskOpts, optErr := list.NewOptions(&model.Task{}, 1, "create_time", taskFilter); optErr == nil {
 				if tasks, _, _, listErr := s.resourceManager.ListTasks(nil, taskOpts); listErr == nil && len(tasks) > 0 {
 					t := tasks[0]
 					runIDForItem = t.RunID
@@ -375,6 +393,9 @@ func (s *RunServer) GetExecutionHttpHandler(gatewayMux *runtime.ServeMux) http.H
 			}
 		}
 
+		// Enrich with input/output artifacts from MLMD events (non-fatal).
+		item.InputArtifacts, item.OutputArtifacts = fetchExecutionArtifacts(mlmdCtx, reader, executionID)
+
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(item)
 	}
@@ -388,3 +409,122 @@ func writeListExecutionsJSON(w http.ResponseWriter, resp listExecutionsResponse)
 func writeListExecutionsError(w http.ResponseWriter, gatewayMux *runtime.ServeMux, r *http.Request, err error) {
 	writeRunMetadataHttpError(r.Context(), gatewayMux, w, r, err)
 }
+
+// fetchExecutionArtifacts returns the input and output artifacts linked to an
+// MLMD execution via events. Failures are non-fatal — both slices are nil.
+func fetchExecutionArtifacts(ctx context.Context, reader RunMetadataReader, executionID int64) (inputs, outputs []executionArtifact) {
+	events, err := reader.GetEventsByExecutionIDs(ctx, []int64{executionID})
+	if err != nil || len(events) == 0 {
+		return nil, nil
+	}
+
+	// Collect artifact IDs along with the first key seen and the direction(s).
+	type artifactInfo struct {
+		key      string
+		isInput  bool
+		isOutput bool
+	}
+	infoByID := make(map[int64]*artifactInfo)
+	for _, event := range events {
+		id := event.GetArtifactId()
+		if id <= 0 {
+			continue
+		}
+		info := infoByID[id]
+		if info == nil {
+			info = &artifactInfo{key: mlmdEventPath(event.GetPath())}
+			infoByID[id] = info
+		}
+		switch mlmdEventDirection(event.GetType()) {
+		case "INPUT":
+			info.isInput = true
+		case "OUTPUT":
+			info.isOutput = true
+		}
+	}
+	if len(infoByID) == 0 {
+		return nil, nil
+	}
+
+	artifactIDs := sortedInt64Keys(func() map[int64]bool {
+		s := make(map[int64]bool, len(infoByID))
+		for id := range infoByID {
+			s[id] = true
+		}
+		return s
+	}())
+
+	artifacts, err := reader.GetArtifacts(ctx, artifactIDs)
+	if err != nil || len(artifacts) == 0 {
+		return nil, nil
+	}
+
+	// Resolve type names.
+	typeIDSet := make(map[int64]bool)
+	for _, a := range artifacts {
+		if a.GetTypeId() > 0 && a.GetType() == "" {
+			typeIDSet[a.GetTypeId()] = true
+		}
+	}
+	typeNames := make(map[int64]string)
+	if len(typeIDSet) > 0 {
+		if artifactTypes, typeErr := reader.GetArtifactTypes(ctx, sortedInt64Keys(typeIDSet)); typeErr == nil {
+			for _, at := range artifactTypes {
+				typeNames[at.GetId()] = at.GetName()
+			}
+		}
+	}
+
+	sort.Slice(artifacts, func(i, j int) bool { return artifacts[i].GetId() < artifacts[j].GetId() })
+	for _, a := range artifacts {
+		if a == nil || a.GetId() <= 0 {
+			continue
+		}
+		info := infoByID[a.GetId()]
+		if info == nil {
+			continue
+		}
+		typeName := a.GetType()
+		if typeName == "" {
+			typeName = typeNames[a.GetTypeId()]
+		}
+		item := executionArtifact{
+			ArtifactID: a.GetId(),
+			TypeID:     a.GetTypeId(),
+			TypeName:   typeName,
+			Name:       a.GetName(),
+			URI:        a.GetUri(),
+			ExternalID: a.GetExternalId(),
+			State:      a.GetState().String(),
+			Key:        info.key,
+		}
+		if ts := a.GetCreateTimeSinceEpoch(); ts > 0 {
+			item.CreatedAt = &ts
+		}
+		if ts := a.GetLastUpdateTimeSinceEpoch(); ts > 0 {
+			item.LastUpdatedAt = &ts
+		}
+		if props := a.GetProperties(); len(props) > 0 {
+			if s := mlmdValuesToStruct(props); s != nil {
+				if b, marshalErr := protojson.Marshal(s); marshalErr == nil {
+					item.Properties = b
+				}
+			}
+		}
+		if custom := a.GetCustomProperties(); len(custom) > 0 {
+			if s := mlmdValuesToStruct(custom); s != nil {
+				if b, marshalErr := protojson.Marshal(s); marshalErr == nil {
+					item.CustomProperties = b
+				}
+			}
+		}
+		if info.isInput {
+			inputs = append(inputs, item)
+		}
+		if info.isOutput {
+			outputs = append(outputs, item)
+		}
+	}
+	return inputs, outputs
+}
+

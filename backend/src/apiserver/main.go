@@ -419,6 +419,7 @@ func startHTTPProxy(resourceManager *resource.ResourceManager, metadataClient *m
 	experimentListServer := server.NewExperimentServer(resourceManager, &server.ExperimentServerOptions{CollectMetrics: *collectMetricsFlag})
 	pipelineListServer := server.NewPipelineServer(resourceManager, &server.PipelineServerOptions{CollectMetrics: *collectMetricsFlag})
 	topMux.HandleFunc("/apis/v2beta1/runs/delete", runMetadataServer.BatchDeleteRunsHttpHandler).Methods(http.MethodPost)
+	topMux.HandleFunc("/apis/v2beta1/pipelines/delete", pipelineListServer.BatchDeletePipelinesHttpHandler).Methods(http.MethodPost)
 	topMux.HandleFunc("/apis/v2beta1/pipelines/versions/delete", pipelineListServer.BatchDeletePipelineVersionsHttpHandler).Methods(http.MethodPost)
 	topMux.HandleFunc("/apis/v2beta1/executions", runMetadataServer.ListExecutionsHttpHandler(runtimeMux)).Methods(http.MethodGet)
 	topMux.HandleFunc("/apis/v2beta1/runs", runMetadataServer.ListRunsHttpHandler(runtimeMux)).Methods(http.MethodGet)
@@ -440,6 +441,7 @@ func startHTTPProxy(resourceManager *resource.ResourceManager, metadataClient *m
 	topMux.HandleFunc("/apis/v2beta1/pipelines/{pipeline_id}", pipelineListServer.PatchPipelineHttpHandler(runtimeMux)).Methods(http.MethodPatch)
 	topMux.HandleFunc("/apis/v2beta1/pipelines/{pipeline_id}/versions/{pipeline_version_id}", pipelineListServer.PatchPipelineVersionHttpHandler(runtimeMux)).Methods(http.MethodPatch)
 	topMux.HandleFunc("/apis/v2beta1/recurringruns/{recurring_run_id}", jobListServer.PatchRecurringRunHttpHandler(runtimeMux)).Methods(http.MethodPatch)
+	topMux.HandleFunc("/apis/v2beta1/experiments/{experiment_id}", experimentListServer.PatchExperimentHttpHandler(runtimeMux)).Methods(http.MethodPatch)
 	// DELETE handlers with cascade support: ?cascade=true deletes associated runs/versions first.
 	topMux.HandleFunc("/apis/v2beta1/pipelines/{pipeline_id}", pipelineListServer.DeletePipelineHttpHandler(runtimeMux)).Methods(http.MethodDelete)
 	topMux.HandleFunc("/apis/v2beta1/pipelines/{pipeline_id}/versions/{pipeline_version_id}", pipelineListServer.DeletePipelineVersionHttpHandler(runtimeMux)).Methods(http.MethodDelete)

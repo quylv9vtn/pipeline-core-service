@@ -542,6 +542,10 @@ func (r *ResourceManager) UpdateJobFields(id, displayName, description string) e
 	return r.jobStore.UpdateJobFields(id, displayName, description)
 }
 
+func (r *ResourceManager) UpdateExperimentFields(id, displayName, description string) error {
+	return r.experimentStore.UpdateExperimentFields(id, displayName, description)
+}
+
 // CountJobsByExperiment returns the number of recurring runs belonging to an experiment.
 func (r *ResourceManager) CountJobsByExperiment(experimentId string) (int, error) {
 	return r.jobStore.CountJobsByExperiment(experimentId)

@@ -14,7 +14,7 @@
 
 package server
 
-// Update HTTP handlers for Pipeline, PipelineVersion, and RecurringRun.
+// Update HTTP handlers for Pipeline, PipelineVersion, RecurringRun, and Experiment.
 //
 // These handlers expose PATCH endpoints that allow updating display_name and
 // description on existing resources. They are registered on topMux before the
@@ -23,6 +23,7 @@ package server
 //	PATCH /apis/v2beta1/pipelines/{pipeline_id}
 //	PATCH /apis/v2beta1/pipelines/{pipeline_id}/versions/{pipeline_version_id}
 //	PATCH /apis/v2beta1/recurringruns/{recurring_run_id}
+//	PATCH /apis/v2beta1/experiments/{experiment_id}
 
 import (
 	"encoding/json"
@@ -112,6 +113,45 @@ func (s *PipelineServer) PatchPipelineVersionHttpHandler(gatewayMux *runtime.Ser
 		marshaler := common.CustomMarshaler()
 		w.Header().Set("Content-Type", marshaler.ContentType(nil))
 		payload, err := marshaler.Marshal(toApiPipelineVersion(pv))
+		if err != nil {
+			http.Error(w, `{"code":13,"message":"failed to marshal response"}`, http.StatusInternalServerError)
+			return
+		}
+		_, _ = w.Write(payload)
+	}
+}
+
+// PatchExperimentHttpHandler serves PATCH /apis/v2beta1/experiments/{experiment_id}.
+// It updates display_name and description and returns the full updated experiment.
+func (s *ExperimentServer) PatchExperimentHttpHandler(gatewayMux *runtime.ServeMux) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		experimentID := mux.Vars(r)["experiment_id"]
+		var body updateFieldsRequest
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeRunMetadataHttpError(r.Context(), gatewayMux, w, r,
+				status.Errorf(codes.InvalidArgument, "invalid JSON body: %v", err))
+			return
+		}
+
+		// Verify existence before update so we can return a proper 404.
+		experiment, err := s.resourceManager.GetExperiment(experimentID)
+		if err != nil {
+			writeRunMetadataHttpError(r.Context(), gatewayMux, w, r, err)
+			return
+		}
+
+		if err := s.resourceManager.UpdateExperimentFields(experimentID, body.DisplayName, body.Description); err != nil {
+			writeRunMetadataHttpError(r.Context(), gatewayMux, w, r, err)
+			return
+		}
+
+		// Reflect updates in the response without a second DB round-trip.
+		experiment.Name = body.DisplayName
+		experiment.Description = body.Description
+
+		marshaler := common.CustomMarshaler()
+		w.Header().Set("Content-Type", marshaler.ContentType(nil))
+		payload, err := marshaler.Marshal(toApiExperiment(experiment))
 		if err != nil {
 			http.Error(w, `{"code":13,"message":"failed to marshal response"}`, http.StatusInternalServerError)
 			return
