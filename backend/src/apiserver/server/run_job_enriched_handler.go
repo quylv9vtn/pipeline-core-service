@@ -218,12 +218,8 @@ func (s *RunServer) GetRunHttpHandler(gatewayMux *runtime.ServeMux) http.Handler
 			return
 		}
 
-		// Inject retry_attempts.
-		attempts, err := s.resourceManager.ListRetryAttempts(runId)
-		if err != nil {
-			http.Error(w, `{"code":13,"message":"failed to fetch retry attempts"}`, http.StatusInternalServerError)
-			return
-		}
+		// Inject retry_attempts (non-fatal: e.g. table not yet migrated).
+		attempts, _ := s.resourceManager.ListRetryAttempts(runId)
 		retryResponses := make([]retryAttemptResponse, len(attempts))
 		for i, a := range attempts {
 			retryResponses[i] = toRetryAttemptResponse(a)
