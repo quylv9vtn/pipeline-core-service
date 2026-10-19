@@ -257,7 +257,18 @@ func (s *PipelineServer) ListPipelinesHttpHandler(gatewayMux *runtime.ServeMux) 
 			writeRunMetadataHttpError(r.Context(), gatewayMux, w, r, err)
 			return
 		}
-		pipelines, totalSize, nextPageToken, err := s.resourceManager.ListPipelines(nil, opts)
+		// Namespace scoping: PipelineStore.ListPipelines dereferences
+		// filterContext.ReferenceKey, so a nil filterContext panics (and Go's
+		// http server then drops the connection). Honor ?namespace= the same
+		// way the gRPC ListPipelines handler does.
+		filterContext := &model.FilterContext{}
+		if ns := q.Get("namespace"); ns != "" {
+			filterContext.ReferenceKey = &model.ReferenceKey{
+				Type: model.NamespaceResourceType,
+				ID:   ns,
+			}
+		}
+		pipelines, totalSize, nextPageToken, err := s.resourceManager.ListPipelines(filterContext, opts)
 		if err != nil {
 			writeRunMetadataHttpError(r.Context(), gatewayMux, w, r, err)
 			return
